@@ -2,7 +2,7 @@
    Demo logins (password for all: Demo2026!): free@demo.nl, verified@demo.nl, pro@demo.nl, admin@demo.nl, compliance@demo.nl, sales@demo.nl, acquisition@demo.nl */
 import { sql } from 'drizzle-orm';
 import { rmSync } from 'fs';
-import { DB, schema as S, getDb, closeDb, DATA_DIR, STORAGE_DIR } from '../db/client';
+import { DB, schema as S, getDb, closeDb, DATA_DIR } from '../db/client';
 import { hashPassword, saveFile } from '../common';
 import { CONFIG_DEFAULTS, newTotpSecret } from '../domain';
 import { samplePdf } from '../pdf';
@@ -44,7 +44,7 @@ export async function seedIfEmpty(db: DB) {
   const pendA = await mk('brightwater@demo.nl', 'Oliver Grant', { investorType: 'Fund', country: 'GB', companyName: 'Brightwater Estates Ltd' });
   const pendB = await mk('oranjewal@demo.nl', 'Sophie van Dijk', { investorType: 'Private BV', companyName: 'Oranjewal Capital BV' });
   const dummy = await samplePdf('Identity document (sample)', 'Uploaded for KYC review', ['Placeholder file for the demo compliance queue.']);
-  await db.insert(S.kycCases).values([{ userId: pendA.id, risk: 'high', ticket: 8000000, kvk: null, uboName: 'Oliver Grant', idFileKey: saveFile(dummy, 'id.pdf'), idFileName: 'passport.pdf', proofFileKey: saveFile(dummy, 'pof.pdf'), proofFileName: 'bank-letter.pdf' }, { userId: pendB.id, risk: 'low', ticket: 2000000, kvk: '81234567', uboName: 'Sophie van Dijk', idFileKey: saveFile(dummy, 'id.pdf'), idFileName: 'id-card.pdf', proofFileKey: saveFile(dummy, 'pof.pdf'), proofFileName: 'financing-letter.pdf' }]);
+  await db.insert(S.kycCases).values([{ userId: pendA.id, risk: 'high', ticket: 8000000, kvk: null, uboName: 'Oliver Grant', idFileKey: await saveFile(db, dummy, 'id.pdf'), idFileName: 'passport.pdf', proofFileKey: await saveFile(db, dummy, 'pof.pdf'), proofFileName: 'bank-letter.pdf' }, { userId: pendB.id, risk: 'low', ticket: 2000000, kvk: '81234567', uboName: 'Sophie van Dijk', idFileKey: await saveFile(db, dummy, 'id.pdf'), idFileName: 'id-card.pdf', proofFileKey: await saveFile(db, dummy, 'pof.pdf'), proofFileName: 'financing-letter.pdf' }]);
 
   for (const x of LISTINGS as any[]) {
     const [p] = await db.insert(S.properties).values({ address: x.address, postcode: x.postcode, city: x.city, district: x.district, lat: x.lat, lng: x.lng, plotM2: x.plot || null, areaM2: x.area, buildYear: x.year, category: x.category, propertyType: x.propertyType, propertyTypeNl: x.propertyTypeNl, tenure: x.tenure, energyLabel: x.label, wozValue: x.woz, wozYear: 2026, image: x.image }).returning();
@@ -53,12 +53,12 @@ export async function seedIfEmpty(db: DB) {
     const [l] = await db.insert(S.listings).values({ propertyId: p.id, slug: x.slug, name: x.name, nameNl: x.nameNl, description: x.description, descriptionNl: x.descriptionNl, highlights: x.highlights, status: x.status, dealType: x.dealType, askingPrice: x.price, priceOnRequest: !!x.priceOnRequest, grossRentAnnual: x.rent, operatingCostsAnnual: x.opex || null, occupancy: x.occupancy || null, demand: x.demand, featured: !!x.featured, publishedAt: new Date(now - x.days * day), proEarlyAccessUntil: x.dealType === 'off_market' ? new Date(now + 47 * 36e5) : null }).returning();
     for (const [folder, files, dl] of FOLDERS) for (const f of files) {
       const pdf = await samplePdf(f, `${x.name} · ${x.address}, ${x.postcode} ${x.city}`, [`This is a fictional ${f.toLowerCase()} for ${x.name}. In production the acquisition team uploads the real file here; tenant names and contact details are redacted before upload (AVG).`, `Property: ${x.propertyType}, ${x.area} m², built ${x.year}, energy label ${x.label}. Asking price €${x.price.toLocaleString('nl-NL')} k.k.`]);
-      await db.insert(S.documents).values({ listingId: l.id, folder, filename: f + '.pdf', storageKey: saveFile(pdf, f + '.pdf'), downloadAllowed: dl });
+      await db.insert(S.documents).values({ listingId: l.id, folder, filename: f + '.pdf', storageKey: await saveFile(db, pdf, f + '.pdf'), downloadAllowed: dl });
     }
     if (x.dealType === 'bid_round') {
       const [r] = await db.insert(S.bidRounds).values({ listingId: l.id, opensAt: new Date(now - 10 * day), closesAt: new Date('2026-11-14T12:00:00+01:00') < new Date(now + day) ? new Date(now + 14 * day) : new Date('2026-11-14T12:00:00+01:00'), minBid: 6900000 }).returning();
       const amounts = [7050000, 7310000, 6920000], conds = ['Subject to financing', 'No conditions', 'Subject to due diligence'];
-      for (let i = 0; i < 3; i++) await db.insert(S.offers).values({ listingId: l.id, userId: bidders[i].id, bidRoundId: r.id, bidderLabel: bidders[i].companyName, amount: amounts[i], conditions: [conds[i]], status: 'sealed', proofFileKey: saveFile(dummy, 'pof.pdf'), proofFileName: 'proof-of-funds.pdf', leadScore: 75, leadBand: 'Hot' });
+      for (let i = 0; i < 3; i++) await db.insert(S.offers).values({ listingId: l.id, userId: bidders[i].id, bidRoundId: r.id, bidderLabel: bidders[i].companyName, amount: amounts[i], conditions: [conds[i]], status: 'sealed', proofFileKey: await saveFile(db, dummy, 'pof.pdf'), proofFileName: 'proof-of-funds.pdf', leadScore: 75, leadBand: 'Hot' });
     }
   }
   for (const [city, type, units, price, days, deal, ago] of SOLD) {
@@ -78,5 +78,5 @@ export async function seedIfEmpty(db: DB) {
   return true;
 }
 if (require.main === module) {
-  (async () => { if (process.argv.includes('--reset')) { rmSync(DATA_DIR, { recursive: true, force: true }); rmSync(STORAGE_DIR, { recursive: true, force: true }); console.log('Removed old demo data.'); } const db = await getDb(); const done = await seedIfEmpty(db); if (!done) console.log('Database already has data. Use --reset to start over.'); await closeDb(); })();
+  (async () => { if (process.argv.includes('--reset')) { rmSync(DATA_DIR, { recursive: true, force: true }); console.log('Removed old demo data.'); } const db = await getDb(); const done = await seedIfEmpty(db); if (!done) console.log('Database already has data. Use --reset to start over.'); await closeDb(); })();
 }

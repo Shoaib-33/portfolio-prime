@@ -46,7 +46,7 @@ export class DealsController {
     const t = readToken<{ d: string; u: string; dl: boolean }>(token); if (!t) throw new ForbiddenException('This link has expired. Open the document again from the data room.');
     const u = requireUser(req); if (u.id !== t.u) throw new ForbiddenException('This link belongs to another user.');
     const d = (await this.db.select().from(S.documents).where(eq(S.documents.id, t.d)))[0]; if (!d) throw new NotFoundException();
-    const stamped = await watermark(readStored(d.storageKey), `${u.name} · ${u.email} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`);
+    const stamped = await watermark(await readStored(this.db, d.storageKey), `${u.name} · ${u.email} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`);
     await audit(this.db, req, t.dl ? 'download' : 'view', 'document', d.id, { filename: d.filename, folder: d.folder });
     res.setHeader('Content-Type', 'application/pdf'); res.setHeader('Content-Disposition', `${t.dl ? 'attachment' : 'inline'}; filename="${d.filename.replace(/[^\w.\- ]/g, '')}"`); res.setHeader('Cache-Control', 'no-store'); res.send(stamped);
   }
@@ -62,7 +62,7 @@ export class DealsController {
     const units = (b.units || '').split(',').filter(Boolean).map(Number).filter(n => n > 0);
     const lead = (await ruleOn(this.db, 'scoring')) ? leadScore({ kind: 'offer', amount: b.amount, message: b.message, units }, true, x.l.askingPrice) : null;
     const followupAt = (await ruleOn(this.db, 'followups')) ? new Date(Date.now() + (lead?.band === 'Hot' ? 4 : 24) * 36e5) : null;
-    const [o] = await this.db.insert(S.offers).values({ listingId: x.l.id, userId: u.id, amount: b.amount, conditions, financingType: b.financingType, transferDate: b.transferDate, units, proofFileKey: saveFile(pf.buffer, pf.originalname), proofFileName: pf.originalname, message: b.message, leadScore: lead?.value, leadBand: lead?.band, followupAt }).returning();
+    const [o] = await this.db.insert(S.offers).values({ listingId: x.l.id, userId: u.id, amount: b.amount, conditions, financingType: b.financingType, transferDate: b.transferDate, units, proofFileKey: await saveFile(this.db, pf.buffer, pf.originalname), proofFileName: pf.originalname, message: b.message, leadScore: lead?.value, leadBand: lead?.band, followupAt }).returning();
     await audit(this.db, req, 'offer_submit', 'offer', o.id, { amount: b.amount, listing: x.l.slug });
     await notify(this.db, u.id, 'offer', 'Offer submitted', `${x.l.name} · €${b.amount.toLocaleString('nl-NL')}. Offers are not binding until a purchase agreement is signed.`, x.l.slug);
     if (lead) await logRule(this.db, 'scoring', `Offer from ${u.name} on ${x.l.name} scored ${lead.value} (${lead.band})`);
@@ -100,7 +100,7 @@ export class DealsController {
     const b = parse(z.object({ amount: z.coerce.number().int().min(r.minBid, `The minimum bid is €${r.minBid.toLocaleString('nl-NL')}`).max(1e9), conditions: z.enum(['No conditions', 'Subject to financing', 'Subject to due diligence']), acceptRules: z.literal('on') }), body);
     const pf = checkFile(files?.proof?.[0], 'Proof of funds');
     const mine = (await this.db.select().from(S.offers).where(and(eq(S.offers.bidRoundId, id), eq(S.offers.userId, u.id))))[0];
-    const vals = { amount: b.amount, conditions: [b.conditions], proofFileKey: saveFile(pf.buffer, pf.originalname), proofFileName: pf.originalname };
+    const vals = { amount: b.amount, conditions: [b.conditions], proofFileKey: await saveFile(this.db, pf.buffer, pf.originalname), proofFileName: pf.originalname };
     if (mine) await this.db.update(S.offers).set(vals).where(eq(S.offers.id, mine.id));
     else await this.db.insert(S.offers).values({ ...vals, listingId: r.listingId, userId: u.id, bidRoundId: id, bidderLabel: u.companyName || u.name, status: 'sealed', leadScore: 75, leadBand: 'Hot' });
     await audit(this.db, req, 'bid_submit', 'bid_round', id, { amount: b.amount, updated: !!mine });

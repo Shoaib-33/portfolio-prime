@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, extname } from 'path';
 import { eq, and, gt } from 'drizzle-orm';
 import type { Request } from 'express';
-import { DB, schema, DATA_DIR, STORAGE_DIR } from './db/client';
+import { DB, schema, DATA_DIR } from './db/client';
 import { ConfigMap, Viewer, tierOf, canDetails, offMarketState, priceBand, figures, dealScore, isStaff, STAFF_ROLES } from './domain';
 const S = schema;
 
@@ -48,8 +48,9 @@ export function signToken(payload: Record<string, unknown>, ttlSec = 300) { cons
 export function readToken<T = any>(token: string): T | null { const [body, sig] = String(token).split('.'); if (!body || !sig) return null; const exp = createHmac('sha256', key()).update(body).digest('base64url'); if (sig.length !== exp.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(exp))) return null; const p = JSON.parse(Buffer.from(body, 'base64url').toString()); return p.exp > Date.now() ? p : null; }
 
 /* ---------- Storage (local folder in demo; S3-compatible bucket in production) ---------- */
-export function saveFile(buf: Buffer, originalName: string) { const k = randomBytes(16).toString('hex') + (extname(originalName || '').toLowerCase().slice(0, 8) || '.bin'); mkdirSync(STORAGE_DIR, { recursive: true }); writeFileSync(resolve(STORAGE_DIR, k), buf); return k; }
-export const readStored = (k: string) => readFileSync(resolve(STORAGE_DIR, k.replace(/[^\w.-]/g, '')));
+const MIME: Record<string, string> = { '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
+export async function saveFile(db: DB, buf: Buffer, originalName: string) { const ext = extname(originalName || '').toLowerCase().slice(0, 8) || '.bin'; const k = randomBytes(16).toString('hex') + ext; await db.insert(schema.files).values({ key: k, name: String(originalName || 'file').slice(0, 200), mime: MIME[ext] || 'application/octet-stream', size: buf.length, data: buf.toString('base64') }); return k; }
+export async function readStored(db: DB, k: string) { const f = (await db.select().from(schema.files).where(eq(schema.files.key, k)))[0]; if (!f) throw new Error('File not found: ' + k); return Buffer.from(f.data, 'base64'); }
 
 /* ---------- Audit, notifications, automation ---------- */
 export async function audit(db: DB, req: Req | null, action: string, objectType: string, objectId: string | null, meta: Record<string, unknown> = {}) {

@@ -115,7 +115,7 @@ export class AccountController {
     const b = parse(z.object({ liveness: z.literal('on'), ticket: z.coerce.number().int().min(0), pep: z.enum(['yes', 'no']), kvk: company ? z.string().regex(/^\d{8}$/, 'KVK number must be 8 digits') : z.string().optional(), ubo: company ? z.string().min(2).max(80) : z.string().optional() }), body);
     const idF = checkFile(files?.idDoc?.[0], 'Identity document'), pf = checkFile(files?.proof?.[0], 'Proof of funds');
     const risk = kycRisk({ investorType: u.investorType, country: u.country, ticket: b.ticket, pep: b.pep === 'yes' });
-    const [c] = await this.db.insert(S.kycCases).values({ userId: u.id, risk, pep: b.pep === 'yes', ticket: b.ticket, kvk: b.kvk || null, uboName: b.ubo || null, idFileKey: saveFile(idF.buffer, idF.originalname), idFileName: idF.originalname, proofFileKey: saveFile(pf.buffer, pf.originalname), proofFileName: pf.originalname }).returning();
+    const [c] = await this.db.insert(S.kycCases).values({ userId: u.id, risk, pep: b.pep === 'yes', ticket: b.ticket, kvk: b.kvk || null, uboName: b.ubo || null, idFileKey: await saveFile(this.db, idF.buffer, idF.originalname), idFileName: idF.originalname, proofFileKey: await saveFile(this.db, pf.buffer, pf.originalname), proofFileName: pf.originalname }).returning();
     await audit(this.db, req, 'kyc_submit', 'kyc_case', c.id, { risk }); await logRule(this.db, 'compliance', `KYC case opened for ${u.name} · ${risk} risk${risk === 'high' ? ' · enhanced due diligence required' : ''}`);
     return { id: c.id, status: c.status, risk };
   }

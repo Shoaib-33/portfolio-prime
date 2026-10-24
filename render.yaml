@@ -1,5 +1,15 @@
-# Render blueprint: one free web service in Frankfurt (EU) running the website and the API together.
-# Free plan: sleeps after ~15 minutes idle and starts again with fresh demo data (no persistent disk).
+# Render blueprint (free plan, Frankfurt / EU):
+# - one web service running the website and the API together (start.js)
+# - one free PostgreSQL database; data and uploaded files are stored there, so they survive restarts.
+# Free web services sleep after ~15 minutes idle (first visit then takes up to a minute).
+# Render's free PostgreSQL databases expire after a limited period; check the Render dashboard.
+databases:
+  - name: portfolio-prime-db
+    plan: free
+    region: frankfurt
+    databaseName: portfolio_prime
+    user: portfolio_prime
+
 services:
   - type: web
     name: portfolio-prime
@@ -7,11 +17,15 @@ services:
     plan: free
     region: frankfurt
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm start
+    startCommand: node start.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: portfolio-prime-db
+          property: connectionString
       - key: PP_SECRET
         generateValue: true
       - key: PP_DEMO

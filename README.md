@@ -17,6 +17,10 @@ Open http://localhost:3000. Or start the two parts yourself: `npm run dev:api` a
 
 Reset the demo database: `npm run seed -- --reset` (from `apps/api`) while the API is stopped.
 
+## Deploy on Render (free)
+
+`render.yaml` creates a free PostgreSQL database and one free web service in Frankfurt (`node start.js` runs the website and API together). In Render: **New + › Blueprint** › pick this repository › **Deploy Blueprint**. Free services sleep after ~15 minutes idle; free databases expire after a limited period.
+
 ## Demo accounts
 
 Password for all: `Demo2026!`. One-click buttons are on the login page. Accounts with two-factor login show the current code in demo mode.
@@ -37,10 +41,10 @@ Password for all: `Demo2026!`. One-click buttons are on the login page. Accounts
 |---|---|---|---|
 | Website | Next.js 15, React 19, TypeScript | Next.js | Server-rendered; the browser only talks to the website, `/api/*` is proxied to the API |
 | API | NestJS 11, TypeScript, zod validation | NestJS | Controllers per domain: public, account, deals, admin; background jobs service |
-| Database | PostgreSQL via **PGlite** (in `apps/api/data`) + Drizzle ORM | PostgreSQL 16 + PostGIS, Prisma/Drizzle | Same SQL and schema. Production: set up PostgreSQL and swap the driver to `drizzle-orm/node-postgres` |
+| Database | Local: PostgreSQL via **PGlite** (in `apps/api/data`). With `DATABASE_URL` set (Render): regular PostgreSQL via node-postgres. Drizzle ORM | PostgreSQL 16 + PostGIS, Prisma/Drizzle | Same schema and migrations for both. PGlite needs ~600 MB while starting; the PostgreSQL mode runs the whole app in ~200 MB |
 | Jobs | Table-based queue polled every 30 s | Redis + BullMQ | Closes bid rounds at the deadline; releases off-market listings to verified investors after 48 h |
 | Login | Email + password (scrypt), TOTP 2FA (RFC 6238), httpOnly session cookie, roles | Keycloak / EU IdP | Staff and data rooms always require 2FA |
-| Files | Local folder `apps/api/storage` | S3-compatible EU storage | Data-room PDFs are watermarked per viewer on the server (pdf-lib), behind 5-minute signed links |
+| Files | `files` table in the database | S3-compatible EU storage | Survives restarts on hosts without a disk. Data-room PDFs are watermarked per viewer on the server (pdf-lib), behind 5-minute signed links |
 | KYC, Mollie, e-sign, email, BAG | Simulated adapters with the real shapes | Sumsub/Veriff/iDIN, Mollie, Signhost, Brevo/Postmark, Kadaster BAG API | Emails go to the `outbox` table; plug in providers with API keys later |
 
 Access control is enforced in the API (`serializeListing` in `apps/api/src/common.ts`): a visitor's browser never receives the address, exact price, financials or documents.

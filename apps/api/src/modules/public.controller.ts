@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Query, Body, Req, Inject, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { eq, sql, and, inArray } from 'drizzle-orm';
-import { DB, schema as S } from '../db/client';
+import { DB, schema as S, dbKind } from '../db/client';
 import { Req as R, viewerOf, getConfig, serializeListing, audit, logRule, draftEmail } from '../common';
 import { canDetails, finance, figures, CONFIG_DEFAULTS, cfg, bagLookup, offMarketState, priceBand, maxPrice, dealScore } from '../domain';
 import { listListings, getListing, hasNda, bidRoundInfo, unitCounts, staffOrVerified } from './listings.service';
@@ -11,7 +11,7 @@ export const parse = <T extends z.ZodTypeAny>(s: T, v: unknown): z.infer<T> => {
 @Controller()
 export class PublicController {
   constructor(@Inject('DB') private db: DB) {}
-  @Get('health') health() { return { ok: true, mode: 'demo', database: 'PGlite (PostgreSQL)' }; }
+  @Get('health') health() { return { ok: true, mode: 'demo', database: dbKind() }; }
   @Get('config/public') async publicConfig() { const c = await getConfig(this.db); return { proPriceMonth: cfg(c, 'pro_price_month'), proPriceYear: cfg(c, 'pro_price_year'), buyerFee: cfg(c, 'buyer_fee') }; }
   @Get('stats') async stats() {
     const sold = await this.db.select({ n: sql<number>`count(*)::int`, v: sql<number>`coalesce(sum(asking_price),0)::bigint` }).from(S.listings).where(eq(S.listings.status, 'sold'));
