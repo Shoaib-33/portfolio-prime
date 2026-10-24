@@ -105,3 +105,10 @@ export const subscriptions = pgTable('subscriptions', { id: id(), userId: uuid('
 /* Uploaded and generated files (KYC documents, proofs of funds, data-room PDFs). Stored in the database so they survive
    restarts on hosts without a persistent disk. Production at scale: S3-compatible EU object storage. */
 export const files = pgTable('files', { key: text('key').primaryKey(), name: text('name').notNull(), mime: text('mime').notNull().default('application/octet-stream'), size: integer('size').notNull(), data: text('data').notNull(), createdAt: created() });
+
+/* Secure messaging between an investor and their account manager, one thread per investor per listing (listing_id null = general). */
+export const messages = pgTable('messages', {
+  id: id(), investorId: uuid('investor_id').notNull().references(() => users.id, { onDelete: 'cascade' }), listingId: uuid('listing_id').references(() => listings.id),
+  senderId: uuid('sender_id').notNull().references(() => users.id), fromStaff: boolean('from_staff').notNull().default(false), body: text('body').notNull(),
+  readAt: timestamp('read_at', { withTimezone: true }), createdAt: created(),
+}, t => [index('messages_thread_idx').on(t.investorId, t.listingId)]);

@@ -4,6 +4,7 @@ import { eq, sql, and, inArray } from 'drizzle-orm';
 import { DB, schema as S, dbKind } from '../db/client';
 import { Req as R, viewerOf, getConfig, serializeListing, audit, logRule, draftEmail } from '../common';
 import { canDetails, finance, figures, CONFIG_DEFAULTS, cfg, bagLookup, offMarketState, priceBand, maxPrice, dealScore } from '../domain';
+import { resolvePlace } from '../geo';
 import { listListings, getListing, hasNda, bidRoundInfo, unitCounts, staffOrVerified } from './listings.service';
 
 export const parse = <T extends z.ZodTypeAny>(s: T, v: unknown): z.infer<T> => { const r = s.safeParse(v); if (!r.success) throw new BadRequestException(r.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')); return r.data; };
@@ -24,6 +25,13 @@ export class PublicController {
     const counts = await unitCounts(this.db, rows.map(r => r.properties.id));
     return rows.map(({ listings: l, properties: p }) => ({ city: p.city, propertyType: p.propertyType, units: counts[p.id] || 1, priceBand: priceBand(l.askingPrice), dealType: l.dealType, soldAt: l.publishedAt, daysToOffer: l.demand }));
   }
+  /** Plan: GET /listings/map. GeoJSON for the map view, same filters and access rules as the list. */
+  @Get('listings/map') async map(@Req() req: R, @Query() q: Record<string, string>) {
+    const rows = (await listListings(this.db, viewerOf(req), q)).filter((l: any) => !l.locked && l.point);
+    return { type: 'FeatureCollection', features: rows.map((l: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [l.point.lng, l.point.lat] }, properties: { slug: l.slug, name: l.name, city: l.city, district: l.district, price: l.askingPrice ?? null, priceDisplay: l.priceDisplay, bar: l.bar, status: l.status, image: l.image, approx: l.point.approx } })) };
+  }
+  /** Place lookup used by the radius filter (city table, then PDOK Locatieserver). */
+  @Get('geo/resolve') async geo(@Query('q') q: string) { return { place: await resolvePlace(q) }; }
   @Get('listings/:slug') async detail(@Req() req: R, @Param('slug') slug: string) {
     const x = await getListing(this.db, slug); if (!x || ['draft', 'withdrawn'].includes(x.l.status)) throw new NotFoundException('Listing not found');
     const v = viewerOf(req); const c = await getConfig(this.db);

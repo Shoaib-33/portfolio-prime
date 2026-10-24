@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql, desc, notInArray } from 'drizzle-orm';
 import { DB, schema as S } from '../db/client';
-import { Viewer, matchesSearch, alertFrequency, tierOf, isStaff } from '../domain';
+import { Viewer, matchesSearch, alertFrequency, tierOf, isStaff, canDetails, provinceOf, distanceKm, CITY_GEO } from '../domain';
+import { resolvePlace } from '../geo';
 import { serializeListing, getConfig, notify, logRule, ruleOn, draftEmail } from '../common';
 
 export async function unitCounts(db: DB, propertyIds: string[]) {
@@ -19,7 +20,13 @@ export async function listListings(db: DB, viewer: Viewer | null, f: Record<stri
   const c = await getConfig(db); const counts = await unitCounts(db, rows.map(r => r.properties.id));
   const saved = viewer?.id ? new Set((await db.select().from(S.favorites).where(eq(S.favorites.userId, viewer.id))).map(x => x.listingId)) : new Set<string>();
   const q = (f.q || '').toLowerCase().trim();
+  const near = f.near ? await resolvePlace(f.near) : null; const radius = Math.min(100, Math.max(1, Number(f.radius) || 25)); const exact = canDetails(viewer);
   let out = rows.filter(({ listings: l, properties: p }) => {
+    if (f.province && provinceOf(p.city) !== f.province) return false;
+    if (near) {
+      // Distance from the exact location for members; from the city centre for visitors (no address leak via radius probing).
+      const at = exact && p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng } : CITY_GEO[p.city]; if (!at || distanceKm(near, at) > radius) return false;
+    }
     if (!matchesSearch({ city: p.city, category: p.category, askingPrice: l.askingPrice, grossRentAnnual: l.grossRentAnnual, dealType: l.dealType, status: 'available' }, f)) return false;
     if (f.minLabel && 'ABCDEFG'.indexOf(p.energyLabel) > 'ABCDEFG'.indexOf(f.minLabel)) return false;
     if (q && ![l.name, l.nameNl, p.city, p.district, p.propertyType, p.propertyTypeNl, l.description].join(' ').toLowerCase().includes(q)) return false;

@@ -10,7 +10,7 @@ const NL: Record<string, string> = {
   'Available': 'Beschikbaar', 'Coming soon': 'Binnenkort', 'Under offer': 'Onder bod', 'Sold': 'Verkocht', 'Direct sale': 'Directe verkoop', 'Portfolio': 'Portefeuille', 'Bid round': 'Inschrijving', 'Off-market': 'Off-market',
   'Asking price (k.k.)': 'Vraagprijs (k.k.)', 'Price per m²': 'Prijs per m²', 'WOZ value': 'WOZ-waarde', 'Energy label': 'Energielabel', 'Tenure': 'Eigendom', 'Build year': 'Bouwjaar', 'Occupancy': 'Bezetting', 'Living area': 'Woonoppervlak',
   'Join free to see the full financials, address and floor plans.': 'Meld u gratis aan voor alle cijfers, het adres en de plattegronden.', 'The property': 'Het object', 'Investment': 'Investering', 'Units & rent roll': 'Eenheden & huurlijst', 'Data room': 'Dataroom',
-  'YOUR NEXT STEP': 'UW VOLGENDE STAP', 'Make an offer': 'Doe een bod', 'Request a viewing': 'Bezichtiging aanvragen', 'Ask a question': 'Stel een vraag', 'Verify to make offers': 'Verifieer om te bieden', 'Submit a sealed bid': 'Doe een gesloten bod',
+  'YOUR NEXT STEP': 'UW VOLGENDE STAP', 'Make an offer': 'Doe een bod', 'Request a viewing': 'Bezichtiging aanvragen', 'Ask a question': 'Stel een vraag', 'Message your account manager': 'Bericht aan uw accountmanager', 'Messages': 'Berichten', 'Map': 'Kaart', 'Verify to make offers': 'Verifieer om te bieden', 'Submit a sealed bid': 'Doe een gesloten bod',
   'All properties': 'Alle objecten', 'Residential portfolios': 'Woningportefeuilles', 'Apartment buildings': 'Appartementencomplexen', 'Prime homes': 'Toplocatiewoningen', 'Every city': 'Elke stad', 'Search': 'Zoeken', 'Back to the offering': 'Terug naar het aanbod',
 };
 export const tr = (lang: string) => (s: string) => (lang === 'nl' && NL[s]) || s;

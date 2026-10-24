@@ -5,7 +5,7 @@ import { resolve, extname } from 'path';
 import { eq, and, gt } from 'drizzle-orm';
 import type { Request } from 'express';
 import { DB, schema, DATA_DIR } from './db/client';
-import { ConfigMap, Viewer, tierOf, canDetails, offMarketState, priceBand, figures, dealScore, isStaff, STAFF_ROLES } from './domain';
+import { ConfigMap, Viewer, tierOf, canDetails, offMarketState, priceBand, figures, dealScore, isStaff, STAFF_ROLES, CITY_GEO, provinceOf } from './domain';
 const S = schema;
 
 export type ReqUser = typeof S.users.$inferSelect & { sessionId: string; twofaPassed: boolean };
@@ -66,13 +66,15 @@ export async function getConfig(db: DB): Promise<ConfigMap> { const rows = await
 export type ListingRow = typeof S.listings.$inferSelect; export type PropertyRow = typeof S.properties.$inferSelect;
 export function serializeListing(l: ListingRow, p: PropertyRow, viewer: Viewer | null, c: ConfigMap, extra: { hasNda?: boolean; saved?: boolean; bidRound?: any } = {}) {
   const om = offMarketState(l.dealType, l.proEarlyAccessUntil, viewer);
-  const base = { id: l.id, slug: l.slug, status: l.status, dealType: l.dealType, city: p.city, publishedAt: l.publishedAt, offMarket: om, saved: !!extra.saved };
+  const base = { id: l.id, slug: l.slug, status: l.status, dealType: l.dealType, city: p.city, province: provinceOf(p.city), publishedAt: l.publishedAt, offMarket: om, saved: !!extra.saved };
   if (om !== 'open') return { ...base, locked: true, propertyType: p.propertyType, propertyTypeNl: p.propertyTypeNl, areaM2: p.areaM2, image: p.image, proEarlyAccessUntil: l.proEarlyAccessUntil };
   const full = canDetails(viewer); const fg = figures({ askingPrice: l.askingPrice, grossRentAnnual: l.grossRentAnnual, operatingCostsAnnual: l.operatingCostsAnnual, areaM2: p.areaM2, unitsCount: 0 }, c);
   const onReq = l.priceOnRequest && !viewer?.verified && !isStaff(viewer);
   const score = dealScore({ askingPrice: l.askingPrice, grossRentAnnual: l.grossRentAnnual, energyLabel: p.energyLabel, demand: l.demand, occupancy: l.occupancy, plotM2: p.plotM2, areaM2: p.areaM2, buildYear: p.buildYear });
   const teaser = { ...base, locked: false, name: l.name, nameNl: l.nameNl, description: l.description, descriptionNl: l.descriptionNl, highlights: l.highlights, district: p.district, category: p.category, propertyType: p.propertyType, propertyTypeNl: p.propertyTypeNl, image: p.image, areaM2: p.areaM2, plotM2: p.plotM2, featured: l.featured,
-    priceDisplay: full ? (onReq ? 'Price on request' : null) : priceBand(l.askingPrice, l.priceOnRequest), bar: l.grossRentAnnual ? +fg.bar.toFixed(2) : null, dealScore: score, full, bidRound: extra.bidRound || null };
+    priceDisplay: full ? (onReq ? 'Price on request' : null) : priceBand(l.askingPrice, l.priceOnRequest), bar: l.grossRentAnnual ? +fg.bar.toFixed(2) : null, dealScore: score, full, bidRound: extra.bidRound || null,
+    // Map pin: exact for members; visitors get the city centre only, so the address cannot be read off the map.
+    point: full && p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng, approx: false } : CITY_GEO[p.city] ? { lat: CITY_GEO[p.city].lat, lng: CITY_GEO[p.city].lng, approx: true } : null };
   if (!full) return teaser;
   return { ...teaser, askingPrice: onReq ? null : l.askingPrice, previousPrice: onReq ? null : l.previousPrice, priceType: l.priceType, address: p.address, postcode: p.postcode, lat: p.lat, lng: p.lng,
     grossRentAnnual: l.grossRentAnnual, operatingCostsAnnual: fg.opex, nar: l.grossRentAnnual ? +fg.nar.toFixed(2) : null, perM2: onReq ? null : Math.round(fg.perM2), wozValue: p.wozValue, wozYear: p.wozYear, energyLabel: p.energyLabel, tenure: p.tenure, buildYear: p.buildYear, occupancy: l.occupancy,

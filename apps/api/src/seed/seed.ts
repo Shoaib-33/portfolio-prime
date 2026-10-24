@@ -1,6 +1,6 @@
 /* Seeds a fresh demo database. All people, companies and properties are fictional.
    Demo logins (password for all: Demo2026!): free@demo.nl, verified@demo.nl, pro@demo.nl, admin@demo.nl, compliance@demo.nl, sales@demo.nl, acquisition@demo.nl */
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { rmSync } from 'fs';
 import { DB, schema as S, getDb, closeDb, DATA_DIR } from '../db/client';
 import { hashPassword, saveFile } from '../common';
@@ -74,9 +74,23 @@ export async function seedIfEmpty(db: DB) {
     { source: 'Website', address: 'Sample Kleverparkweg 30, Haarlem', propertyType: 'Apartment building', units: 10, askingPrice: 3400000, estValue: 3250000, stage: 'under_contract', ownerName: 'Ada Admin' },
     { source: 'Broker', address: 'Sample Assendorperstraat 5, Zwolle', propertyType: 'Residential portfolio', units: 12, askingPrice: 2300000, estValue: 2250000, stage: 'acquired', ownerName: 'Mark Visser' }]);
   await db.insert(S.automationLog).values({ rule: 'system', text: 'Demo database created and seeded' });
+  await seedMessages(db);
   console.log('Seeded demo database. Demo password for all demo accounts: ' + DEMO_PASSWORD);
   return true;
 }
 if (require.main === module) {
   (async () => { if (process.argv.includes('--reset')) { rmSync(DATA_DIR, { recursive: true, force: true }); console.log('Removed old demo data.'); } const db = await getDb(); const done = await seedIfEmpty(db); if (!done) console.log('Database already has data. Use --reset to start over.'); await closeDb(); })();
+}
+
+/** Sample conversation for the messaging demo. Also runs on databases seeded before messaging existed (only when there are no messages yet). */
+export async function seedMessages(db: DB) {
+  if ((await db.select({ n: sql<number>`count(*)::int` }).from(S.messages))[0].n > 0) return;
+  const [inv] = await db.select().from(S.users).where(eq(S.users.email, 'verified@demo.nl')); const [am] = await db.select().from(S.users).where(eq(S.users.email, 'sales@demo.nl'));
+  const [l] = await db.select().from(S.listings).where(eq(S.listings.slug, 'rotterdam-zuid')); if (!inv || !am || !l) return;
+  const t = Date.now() - 26 * 36e5;
+  await db.insert(S.messages).values([
+    { investorId: inv.id, listingId: l.id, senderId: inv.id, body: 'Hello Sanne, are any of the 24 units in Rotterdam-Zuid due for a rent review in the next 12 months?', createdAt: new Date(t), readAt: new Date(t + 36e5) },
+    { investorId: inv.id, listingId: l.id, senderId: am.id, fromStaff: true, body: 'Hi Victor, five leases index on 1 July and two mid-rent units can move to market rent after renovation. The rent roll in the data room (Financial folder) shows the dates per unit.', createdAt: new Date(t + 2 * 36e5), readAt: new Date(t + 3 * 36e5) },
+    { investorId: inv.id, listingId: l.id, senderId: inv.id, body: 'Thank you. Could we schedule a viewing next week, ideally Tuesday morning?', createdAt: new Date(t + 20 * 36e5) },
+  ]);
 }

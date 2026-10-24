@@ -91,7 +91,8 @@ export function bagLookup(postcode: string, number: string) {
   const pc = String(postcode || '').toUpperCase().replace(/\s/g, ''); if (!/^\d{4}[A-Z]{2}$/.test(pc) || !String(number || '').trim()) return null;
   const h = [...pc + number].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7); const p2 = +pc.slice(0, 2);
   const city = p2 <= 11 ? 'Amsterdam' : p2 >= 25 && p2 <= 26 ? 'Den Haag' : p2 >= 30 && p2 <= 31 ? 'Rotterdam' : p2 === 35 ? 'Utrecht' : p2 === 56 ? 'Eindhoven' : 'Haarlem';
-  return { address: `Sample street ${number}`, postcode: `${pc.slice(0, 4)} ${pc.slice(4)}`, city, buildYear: 1900 + h % 118, areaM2: 420 + h % 1600, units: 4 + h % 30, use: 'woonfunctie', energyLabel: 'ABCDEF'[h % 6], lat: +(51.4 + (h % 180) / 100).toFixed(4), lng: +(4.2 + (h % 160) / 100).toFixed(4), source: 'Simulated BAG response' };
+  const g = CITY_GEO[city];
+  return { address: `Sample street ${number}`, postcode: `${pc.slice(0, 4)} ${pc.slice(4)}`, city, buildYear: 1900 + h % 118, areaM2: 420 + h % 1600, units: 4 + h % 30, use: 'woonfunctie', energyLabel: 'ABCDEF'[h % 6], lat: +(g.lat + ((h % 41) - 20) / 1000).toFixed(4), lng: +(g.lng + ((h >> 8) % 41 - 20) / 1000).toFixed(4), source: 'Simulated BAG response' };
 }
 
 /** Saved search / buy-box matching. */
@@ -119,3 +120,17 @@ function unbase32(s: string) { let bits = ''; for (const c of s.replace(/=+$/, '
 export const newTotpSecret = () => base32(randomBytes(20));
 export function totp(secret: string, at = Date.now(), step = 30) { const ctr = Buffer.alloc(8); ctr.writeBigUInt64BE(BigInt(Math.floor(at / 1000 / step))); const h = createHmac('sha1', unbase32(secret)).update(ctr).digest(); const o = h[h.length - 1] & 15; return String((h.readUInt32BE(o) & 0x7fffffff) % 1e6).padStart(6, '0'); }
 export const verifyTotp = (secret: string, code: string, at = Date.now()) => [-1, 0, 1].some(w => totp(secret, at + w * 30000) === String(code).trim());
+
+/* ---------- Location: provinces, city centres, distance (map and radius search) ---------- */
+export const CITY_GEO: Record<string, { province: string; lat: number; lng: number }> = {
+  Amsterdam: { province: 'Noord-Holland', lat: 52.3728, lng: 4.8936 }, Haarlem: { province: 'Noord-Holland', lat: 52.3808, lng: 4.6368 },
+  Rotterdam: { province: 'Zuid-Holland', lat: 51.9225, lng: 4.4792 }, 'Den Haag': { province: 'Zuid-Holland', lat: 52.0705, lng: 4.3007 }, Wassenaar: { province: 'Zuid-Holland', lat: 52.1428, lng: 4.4014 },
+  Utrecht: { province: 'Utrecht', lat: 52.0907, lng: 5.1214 }, Eindhoven: { province: 'Noord-Brabant', lat: 51.4416, lng: 5.4697 },
+};
+export const PROVINCES = ['Drenthe', 'Flevoland', 'Friesland', 'Gelderland', 'Groningen', 'Limburg', 'Noord-Brabant', 'Noord-Holland', 'Overijssel', 'Utrecht', 'Zeeland', 'Zuid-Holland'];
+export const provinceOf = (city: string) => CITY_GEO[city]?.province || null;
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const r = (d: number) => d * Math.PI / 180; const dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}

@@ -3,8 +3,9 @@ import './web.css';
 import { headers } from 'next/headers';
 import { getMe, getLang } from '@/lib/api';
 import { Header, Footer } from '@/components/ui';
+import { indexable } from '@/lib/seo';
 
-export const metadata = { title: 'Portfolio & Prime | Exclusive Dutch property deals for verified investors', description: 'Exclusive Dutch property deals for verified investors, with every number and document in one place.', robots: { index: false, follow: false } };
+export const metadata = { title: 'Portfolio & Prime | Exclusive Dutch property deals for verified investors', description: 'Exclusive Dutch property deals for verified investors, with every number and document in one place.', metadataBase: new URL(process.env.SITE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000'), robots: indexable() ? { index: true, follow: true } : { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

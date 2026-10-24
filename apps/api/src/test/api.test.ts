@@ -85,3 +85,31 @@ test('KYC submission with files creates a pending case; approval verifies the in
   const comp = new Client(); await comp.login('compliance@demo.nl'); await comp.req(`/admin/kyc/${k.body.id}/decision`, { method: 'POST', json: { decision: 'approved' } });
   assert.equal((await c.req('/me')).body.user.verified, true);
 });
+test('map and location filters: visitors get city-centre points only; province and radius filter on the server', async () => {
+  process.env.PP_OFFLINE = '1';
+  const v = new Client(); const fc = (await v.req('/listings/map')).body; assert.equal(fc.type, 'FeatureCollection');
+  const rz = fc.features.find((f: any) => f.properties.slug === 'rotterdam-zuid'); assert.equal(rz.properties.approx, true); assert.deepEqual(rz.geometry.coordinates, [4.4792, 51.9225]); assert.equal(rz.properties.price, null);
+  assert.ok(!fc.features.some((f: any) => f.properties.slug === 'wassenaar-villa'), 'locked off-market listings are not on the map');
+  const m = new Client(); await m.login('free@demo.nl'); const exact = (await m.req('/listings/map')).body.features.find((f: any) => f.properties.slug === 'rotterdam-zuid');
+  assert.equal(exact.properties.approx, false); assert.deepEqual(exact.geometry.coordinates, [4.49, 51.9]);
+  const zh = (await v.req('/listings?province=Zuid-Holland')).body; assert.ok(zh.length > 0 && zh.every((l: any) => l.province === 'Zuid-Holland'));
+  const near = (await v.req('/listings?near=Rotterdam&radius=10')).body; assert.ok(near.every((l: any) => l.city === 'Rotterdam') && near.length > 0);
+  assert.ok((await v.req('/listings?near=Rotterdam&radius=50')).body.some((l: any) => l.city === 'Den Haag' || l.city === 'Utrecht'));
+  assert.equal((await v.req('/geo/resolve?q=Utrecht')).body.place.name, 'Utrecht');
+});
+test('messaging: investor writes about a listing, sales replies, investor is alerted; other investors and compliance cannot interfere', async () => {
+  const inv = new Client(); await inv.login('free@demo.nl');
+  assert.equal((await new Client().req('/messages', { method: 'POST', json: { listing: 'utrecht-oost', body: 'Hello' } })).status, 401);
+  assert.equal((await inv.req('/messages', { method: 'POST', json: { listing: 'utrecht-oost', body: 'Is the roof recently renewed?' } })).status, 201);
+  const sales = new Client(); await sales.login('sales@demo.nl'); const list = (await sales.req('/admin/messages')).body;
+  const t = list.threads.find((x: any) => x.slug === 'utrecht-oost' && x.investorEmail === 'free@demo.nl'); assert.ok(t); assert.equal(t.unreadForStaff, 1);
+  assert.equal((await sales.req('/admin/messages', { method: 'POST', json: { investorId: t.investorId, listing: 'utrecht-oost', body: 'Yes, in 2021. The inspection report is in the data room.' } })).status, 201);
+  const mine = (await inv.req('/messages')).body.threads.find((x: any) => x.slug === 'utrecht-oost'); assert.equal(mine.unreadForInvestor, 1);
+  const th = (await inv.req('/messages/thread?listing=utrecht-oost')).body; assert.equal(th.messages.length, 2); assert.equal(th.messages[1].fromStaff, true);
+  assert.equal((await inv.req('/messages')).body.threads.find((x: any) => x.slug === 'utrecht-oost').unreadForInvestor, 0, 'opening the thread marks it read');
+  assert.ok((await inv.req('/me/dashboard')).body.notifications.some((n: any) => n.type === 'message'));
+  const other = new Client(); await other.login('pro@demo.nl'); assert.ok(!(await other.req('/messages')).body.threads.some((x: any) => x.slug === 'utrecht-oost'), 'threads are private');
+  const comp = new Client(); await comp.login('compliance@demo.nl'); assert.equal((await comp.req('/admin/messages')).status, 200);
+  assert.equal((await comp.req('/admin/messages', { method: 'POST', json: { investorId: t.investorId, listing: 'utrecht-oost', body: 'Hi' } })).status, 403);
+  assert.equal((await inv.req('/admin/messages')).status, 403);
+});
