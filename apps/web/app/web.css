@@ -1,0 +1,30 @@
+/* Next.js app additions on top of the demo design system */
+.form-ok{color:var(--green);font-size:13px;margin-top:12px;font-weight:600}
+.form-error{color:#a24632;font-size:13px;margin-top:10px;display:block}
+.action-wrap{display:inline-flex;flex-direction:column;gap:4px}
+.tabs a,.ws-tabs a{white-space:nowrap;padding:15px 16px;font-size:13.5px;border-bottom:2px solid transparent;color:var(--muted);font-weight:500}
+.tabs a[aria-selected=true],.ws-tabs a[aria-selected=true]{color:var(--ink);border-color:var(--accent)}
+.auth-card{max-width:520px}.auth-card.wide{max-width:860px}.auth-card h2{margin-bottom:14px}.auth-card label,.panel>label{margin-bottom:14px}
+.auth-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.demo-logins{display:flex;flex-direction:column;gap:8px}.demo-logins .btn{justify-content:space-between;width:100%}.demo-logins small{font-weight:400;color:var(--muted)}
+code.secret{font:600 14px ui-monospace,Consolas,monospace;background:#f0eee7;padding:4px 8px;word-break:break-all}
+.side-form{margin-bottom:12px}.side-form>summary{list-style:none;cursor:pointer;width:100%}.side-form>summary::-webkit-details-marker{display:none}
+.side-form>summary.btn{width:100%;font-size:12px;gap:10px}
+.side-panel{border:1px solid var(--line);background:#fbfbf8;border-radius:6px;padding:16px;margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.side-panel label{font-size:12px}.side-panel .btn{width:100%}.side-panel fieldset{margin:0}
+.detail-save .save{position:static;width:48px;height:48px;border:1px solid var(--line)}
+.detail-media{height:400px}
+.chip-btn{border:1px solid #c9cec5;border-radius:30px;padding:7px 15px;font-size:12px;font-weight:600}.chip-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.inline-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.inline-form input{width:140px;padding:7px 9px}.inline-form .btn{min-height:34px;padding:6px 12px}
+.inline-form.wide{align-items:flex-end;margin-top:12px}.inline-form.wide label{flex:1;min-width:240px}.inline-form.wide input{width:100%}
+.kyc-case{margin-bottom:14px}.kyc-case h3{font-size:20px;display:flex;gap:10px;align-items:center}
+.alert-item.read{opacity:.6;border-left-color:var(--line)}
+.offmarket-lock{position:relative;border-radius:8px;overflow:hidden;min-height:420px;display:grid;place-items:center;margin-top:30px;background:#182e32}
+.offmarket-lock>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.6}
+.offmarket-lock>div{position:relative;text-align:center;color:#fff;max-width:560px;padding:30px}.offmarket-lock h1{color:#fff;font-size:40px;margin:10px 0}.offmarket-lock p{color:#e3e6df;margin-bottom:22px}
+.offmarket-lock svg{width:46px;height:46px;stroke:#e2c391;fill:none;stroke-width:1.5}
+.nda-form{text-align:left;max-width:560px;margin:20px auto 0;display:flex;flex-direction:column;gap:12px}
+.document-row summary{cursor:pointer}.document-row details p{margin-top:8px;font-size:13px}
+.save{text-decoration:none}
+.header nav .link-button{font-size:13px;text-decoration:none}
+@media(max-width:900px){.auth-grid{grid-template-columns:1fr}.header nav{display:flex;flex-wrap:wrap;gap:10px;position:static;padding:0;border:0;box-shadow:none;background:none}.header{height:auto;padding-block:14px;flex-wrap:wrap}}

@@ -1,0 +1,20 @@
+# Render blueprint: one free web service in Frankfurt (EU) running the website and the API together.
+# Free plan: sleeps after ~15 minutes idle and starts again with fresh demo data (no persistent disk).
+services:
+  - type: web
+    name: portfolio-prime
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PP_SECRET
+        generateValue: true
+      - key: PP_DEMO
+        value: "1"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
