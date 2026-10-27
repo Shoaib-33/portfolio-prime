@@ -41,7 +41,7 @@ export function requireStaff(req: Req, roles: string[] = STAFF_ROLES): ReqUser {
   if (!u.twofaPassed) throw new ForbiddenException('Staff accounts need two-factor login.');
   return u;
 }
-export const viewerOf = (req: Req): Viewer | null => req.user ? { id: req.user.id, role: req.user.role, verified: req.user.verified, pro: req.user.pro, twofaEnabled: req.user.twofaEnabled } : null;
+export const viewerOf = (req: Req): Viewer | null => req.user ? { id: req.user.id, role: req.user.role, verified: req.user.verified, pro: req.user.pro, twofaEnabled: req.user.twofaEnabled, investorType: req.user.investorType } : null;
 
 /* ---------- Signed, expiring links (plan: 5-minute signed URLs) ---------- */
 export function signToken(payload: Record<string, unknown>, ttlSec = 300) { const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + ttlSec * 1000 })).toString('base64url'); return body + '.' + createHmac('sha256', key()).update(body).digest('base64url'); }
@@ -67,6 +67,8 @@ export type ListingRow = typeof S.listings.$inferSelect; export type PropertyRow
 export function serializeListing(l: ListingRow, p: PropertyRow, viewer: Viewer | null, c: ConfigMap, extra: { hasNda?: boolean; saved?: boolean; bidRound?: any } = {}) {
   const om = offMarketState(l.dealType, l.proEarlyAccessUntil, viewer);
   const base = { id: l.id, slug: l.slug, status: l.status, dealType: l.dealType, city: p.city, province: provinceOf(p.city), publishedAt: l.publishedAt, offMarket: om, saved: !!extra.saved };
+  // Private deal rooms show a codename teaser (name, price band, highlights) so institutions can request access; nothing that identifies the assets.
+  if (om !== 'open' && l.dealType === 'institutional') return { ...base, locked: true, name: l.name, highlights: l.highlights, priceDisplay: priceBand(l.askingPrice), propertyType: p.propertyType, areaM2: p.areaM2, image: p.image, category: p.category };
   if (om !== 'open') return { ...base, locked: true, propertyType: p.propertyType, propertyTypeNl: p.propertyTypeNl, areaM2: p.areaM2, image: p.image, proEarlyAccessUntil: l.proEarlyAccessUntil };
   const full = canDetails(viewer); const fg = figures({ askingPrice: l.askingPrice, grossRentAnnual: l.grossRentAnnual, operatingCostsAnnual: l.operatingCostsAnnual, areaM2: p.areaM2, unitsCount: 0 }, c);
   const onReq = l.priceOnRequest && !viewer?.verified && !isStaff(viewer);

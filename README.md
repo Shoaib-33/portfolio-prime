@@ -29,7 +29,8 @@ Password for all: `Demo2026!`. One-click buttons are on the login page. Accounts
 |---|---|
 | free@demo.nl | Free member: full financials and addresses, no data room or offers |
 | verified@demo.nl | Verified investor: NDA, data room, offers, bid round (2FA on) |
-| pro@demo.nl | Investor Pro: off-market first look |
+| pro@demo.nl | Investor Pro: off-market first look; family office, so also qualified for private deal rooms |
+| fund@demo.nl | Institutional (pension fund): private deal rooms, sale process, bids, Q&A, IC memo, mandate matching |
 | admin@demo.nl | Staff, all rights |
 | compliance@demo.nl | Staff: KYC queue, audit log, flagging |
 | sales@demo.nl | Staff: offers, deals, bid rounds |
@@ -53,9 +54,21 @@ Access control is enforced in the API (`serializeListing` in `apps/api/src/commo
 
 Public site, listings with filters (type, city, province, radius around a city or postcode via PDOK Locatieserver, deal type, price, yield, energy label) and search, **map view** (MapLibre + PDOK base map, clustered pins; visitors only see the approximate area), **SEO landing pages** per city and type (`/beleggingspanden/rotterdam`, `/beleggingspanden/rotterdam/woningportefeuilles`) with schema.org RealEstateListing/BreadcrumbList/ItemList markup, `sitemap.xml`, `robots.txt` and Open Graph images, key figures (BAR, NAR, price per m², WOZ, tenure), sold archive, NL/EN switch for the main pages, Smart finder · sign-up and login with 2FA, buy box, saved searches, favourites, notifications, data export and deletion · KYC upload with risk scoring and compliance review · NDA per listing, data room with folders, watermarked viewer, download policy and audit log · server-side calculator · offers with proof of funds, admin accept/counter/reject, deal timeline · **secure messaging** between investor and account manager per listing (staff reply from the workspace; email only announces a new message) · sealed bid rounds with minimum bid, scheduled close and award · Investor Pro checkout (simulated Mollie) and off-market early access · staff workspace: KPIs and funnel, investor CRM, offers and deals, bid rounds, acquisition pipeline, BAG lookup to create and publish listings with buy-box matching, price changes with alerts, config table for transfer tax, KYC queue, FIU flagging, audit log, automation rules, outbox and job queue.
 
+## Institutional layer
+
+- **Private deal rooms** (`dealType: institutional`, e.g. Project Tulip, 860 homes; Project Delta, build-to-rent forward funding): codename teaser for everyone, details only for verified funds, family offices, pension funds and insurers (`isQualified` in `domain.ts`).
+- **Structured sale process** (`sale_processes`, `qa_items`): teaser & NDA → IM → indicative bids → shortlist (top 3, automatic) → full data room → final binding bids → SPA. Minimum ticket from the config table; anonymised Q&A log; staff run it from *Deal processes* in the workspace (only admin and sales see bid amounts).
+- **Analysis tab** (`analytics.ts`, `analysis.service.ts`): automated valuation and comparables, 10-year DCF with IRR and stress tests, WWS rent-regulation exposure per unit (Wet betaalbare huur; thresholds in the config table), ESG (labels, energy intensity, CO₂, EU Taxonomy, capex to label B), due-diligence flags. Unit-level parts need verification and the property NDA.
+- **AI analyst** (`ai.ts`, `POST /api/ai/ask`, `/analyst` and the listing's *Ask the AI analyst* tab): answers only from the viewer's analysis pack, with sources; scenarios run through the server calculators; never recommends buying. Set `ANTHROPIC_API_KEY` (optional `PP_AI_MODEL`, default `claude-opus-5-5`) to use Claude; without a key a built-in analyst engine answers. 30 questions per user per hour; questions are logged in `ai_logs`.
+- **IC memo**: `GET /api/listings/:slug/memo`, a watermarked PDF draft for verified investors.
+- **Mandate matching**: fit score per listing against the buy box on *My account*.
+- **Reach**: English and German investor guides (`/invest-in-dutch-real-estate`, `/de/immobilien-investment-niederlande`) with FAQ markup and hreflang, `/market-report` (Dataset markup), `/llms.txt` for AI search engines, all in the sitemap.
+
+Market benchmarks and comparable transactions are fictional demo data (`MARKET`, `COMPS` in `analytics.ts`); production connects a transaction-data feed. WWS points are an indicative estimate.
+
 ## Tests
 
-`npm test` (from `platform/`) runs 20 tests: business rules (tiers, off-market timing, BAR/NAR, KYC risk, matching, RFC 6238 TOTP vectors) and end-to-end API tests on a fresh in-memory database (no leaks to visitors, watermarked links bound to the user, offer → deal, bid rounds, roles, KYC, map points and radius search, messaging privacy and roles).
+`npm test` (from `platform/`) runs 26 tests: business rules (tiers, off-market timing, BAR/NAR, KYC risk, matching, RFC 6238 TOTP vectors, IRR and scenarios, WWS points, ESG, valuation, flags, mandate fit) and end-to-end API tests on a fresh in-memory database (no leaks to visitors, watermarked links bound to the user, offer → deal, bid rounds, roles, KYC, map points and radius search, messaging privacy and roles, private deal rooms and sale process, analysis, memo and AI analyst access levels).
 
 ## Before real investors use it
 

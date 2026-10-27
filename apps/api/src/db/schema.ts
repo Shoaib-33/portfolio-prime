@@ -112,3 +112,19 @@ export const messages = pgTable('messages', {
   senderId: uuid('sender_id').notNull().references(() => users.id), fromStaff: boolean('from_staff').notNull().default(false), body: text('body').notNull(),
   readAt: timestamp('read_at', { withTimezone: true }), createdAt: created(),
 }, t => [index('messages_thread_idx').on(t.investorId, t.listingId)]);
+
+/* Structured sale process for institutional portfolios: teaser > NDA > IM > indicative bids > shortlist > final bids > signing.
+   stages: [{ key, label, deadline? }]; stage = index of the current stage. Bids are stored in offers (status indicative/final). */
+export const saleProcesses = pgTable('sale_processes', {
+  id: id(), listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }), stage: integer('stage').notNull().default(0),
+  stages: jsonb('stages').$type<{ key: string; label: string; deadline?: string | null }[]>().notNull(), minTicket: integer('min_ticket'), advisor: text('advisor'),
+  shortlist: jsonb('shortlist').$type<string[]>().notNull().default([]), createdAt: created(),
+}, t => [uniqueIndex('sale_processes_listing_idx').on(t.listingId)]);
+/* Process Q&A log: answered questions are visible (anonymised) to every qualified participant. */
+export const qaItems = pgTable('qa_items', {
+  id: id(), listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }), userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  category: text('category').notNull().default('General'), question: text('question').notNull(), answer: text('answer'), answeredBy: text('answered_by'),
+  answeredAt: timestamp('answered_at', { withTimezone: true }), createdAt: created(),
+}, t => [index('qa_listing_idx').on(t.listingId)]);
+/* AI analyst usage log (question and mode only; answers are reproducible from the data). */
+export const aiLogs = pgTable('ai_logs', { id: serial('id').primaryKey(), userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }), listingSlug: text('listing_slug'), question: text('question').notNull(), mode: text('mode').notNull(), at: created() });

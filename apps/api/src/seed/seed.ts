@@ -74,12 +74,69 @@ export async function seedIfEmpty(db: DB) {
     { source: 'Website', address: 'Sample Kleverparkweg 30, Haarlem', propertyType: 'Apartment building', units: 10, askingPrice: 3400000, estValue: 3250000, stage: 'under_contract', ownerName: 'Ada Admin' },
     { source: 'Broker', address: 'Sample Assendorperstraat 5, Zwolle', propertyType: 'Residential portfolio', units: 12, askingPrice: 2300000, estValue: 2250000, stage: 'acquired', ownerName: 'Mark Visser' }]);
   await db.insert(S.automationLog).values({ rule: 'system', text: 'Demo database created and seeded' });
-  await seedMessages(db);
+  await seedMessages(db); await seedInstitutional(db);
   console.log('Seeded demo database. Demo password for all demo accounts: ' + DEMO_PASSWORD);
   return true;
 }
 if (require.main === module) {
   (async () => { if (process.argv.includes('--reset')) { rmSync(DATA_DIR, { recursive: true, force: true }); console.log('Removed old demo data.'); } const db = await getDb(); const done = await seedIfEmpty(db); if (!done) console.log('Database already has data. Use --reset to start over.'); await closeDb(); })();
+}
+
+/** Institutional layer: a qualified fund account, two private deal rooms with a structured sale process, Q&A and indicative bids.
+    Idempotent, so it also upgrades databases seeded before this existed (the live demo). */
+const STAGES: [string, string][] = [['teaser', 'Teaser & NDA'], ['im', 'Information memorandum'], ['indicative', 'Indicative bids'], ['shortlist', 'Shortlist & management presentations'], ['dataroom', 'Full data room & site visits'], ['final', 'Final binding bids'], ['signing', 'SPA signing & notary transfer']];
+export async function seedInstitutional(db: DB) {
+  await db.insert(S.config).values(CONFIG_DEFAULTS.map(c => ({ key: c.key, label: c.label, value: c.value, unit: c.unit, validFrom: c.validFrom }))).onConflictDoNothing();
+  if ((await db.select().from(S.listings).where(eq(S.listings.slug, 'project-tulip')))[0]) return;
+  const now = Date.now(), day = 864e5; const iso = (d: number) => new Date(now + d * day).toISOString();
+  let [fund] = await db.select().from(S.users).where(eq(S.users.email, 'fund@demo.nl'));
+  if (!fund) fund = (await db.insert(S.users).values({ email: 'fund@demo.nl', name: 'Ingrid Lund', passwordHash: hashPassword(DEMO_PASSWORD), investorType: 'Pension fund', country: 'DK', companyName: 'Nordhavn Pension Partners', verified: true, twofaEnabled: true, twofaSecret: newTotpSecret(), accountManager: 'Sanne de Wit', leadScore: 85 }).returning())[0];
+  await db.insert(S.buyBoxes).values({ userId: fund.id, regions: ['Amsterdam', 'Utrecht', 'Rotterdam'], types: ['portfolios', 'buildings'], ticketMin: 25000000, ticketMax: 400000000, targetBar: 4.8, financing: 'cash', strategy: 'Buy-to-let' }).onConflictDoNothing();
+  const DEALS = [
+    { slug: 'project-tulip', name: 'Project Tulip', nameNl: 'Project Tulp', image: 'p2', city: 'Utrecht', district: 'Randstad · 6 cities', address: '42 residential complexes (addresses in the IM)', postcode: 'Multiple', propertyType: 'Institutional residential portfolio', propertyTypeNl: 'Institutionele woningportefeuille', category: 'portfolios', units: 860, year: 1998, label: 'B', tenure: 'Mostly freehold (82%), remainder ground lease (erfpacht)', occupancy: 98, bar: 5.35, wozF: 1.04, status: 'available', stage: 2, lat: 52.0907, lng: 5.1214, mix: 'existing',
+      description: 'A stabilised residential portfolio of 860 rental homes in 42 complexes across Amsterdam, Utrecht, Rotterdam, Den Haag, Haarlem and Amersfoort. Sold as one portfolio through a structured two-round process, with vendor due diligence available to shortlisted parties.', descriptionNl: 'Een gestabiliseerde woningportefeuille van 860 huurwoningen in 42 complexen in de Randstad, verkocht via een gestructureerd biedproces in twee rondes.',
+      highlights: ['860 rental homes in 42 complexes, 6 Randstad cities', '98% occupancy · 40% free-sector, 40% mid-rent, 20% social', 'Two-round process · vendor due diligence for the shortlist'], advisor: 'Portfolio & Prime Capital Markets' },
+    { slug: 'project-delta', name: 'Project Delta', nameNl: 'Project Delta', image: 'p4', city: 'Rotterdam', district: 'Merwe-Vierhavens (M4H)', address: 'Build-to-rent scheme (plot details in the IM)', postcode: 'Multiple', propertyType: 'Build-to-rent · forward funding', propertyTypeNl: 'Nieuwbouw huur · forward funding', category: 'buildings', units: 312, year: 2028, label: 'A', tenure: 'Freehold (eigen grond)', occupancy: null, bar: 5.0, wozF: 0.95, status: 'available', stage: 1, lat: 51.9055, lng: 4.4421, mix: 'new',
+      description: 'Forward funding of a 312-home build-to-rent scheme in Rotterdam’s M4H district, delivered turnkey in Q3 2028 with BENG/NZEB performance. Fixed price, developer completion guarantee and a 24-month rent guarantee on the lease-up.', descriptionNl: 'Forward funding van een nieuwbouwproject met 312 huurwoningen in Rotterdam M4H, turnkey oplevering Q3 2028.',
+      highlights: ['312 new rental homes, energy label A (NZEB)', 'Turnkey delivery Q3 2028, fixed price', '24-month rent guarantee during lease-up'], advisor: 'Portfolio & Prime Capital Markets' },
+  ];
+  const bidders = await db.select().from(S.users).where(sql`${S.users.email} in ('hanseatic@demo.nl','alnoor@demo.nl')`);
+  const pro = (await db.select().from(S.users).where(eq(S.users.email, 'pro@demo.nl')))[0];
+  for (const x of DEALS) {
+    const unitRows: any[] = []; let rent = 0, area = 0;
+    for (let i = 1; i <= x.units; i++) {
+      const a = x.mix === 'new' ? 45 + (i * 29) % 41 : 48 + (i * 37) % 55; const k = i % 10;
+      const label = x.mix === 'new' ? 'A' : 'AAAAAABBBBBBCCCCDDEF'[i % 20];
+      const type = x.mix === 'new' ? (k < 6 ? 'mid' : 'free') : k < 2 ? 'social' : k < 6 ? 'mid' : 'free';
+      const m = type === 'social' ? 760 + (i * 13) % 140 : type === 'mid' ? 1040 + (i * 17) % 230 : 1380 + (i * 23) % 560;
+      const vacant = x.mix === 'existing' && i % 50 === 0; if (!vacant) rent += m * 12; area += a;
+      unitRows.push({ ref: String(i).padStart(3, '0'), areaM2: a, rentMonthly: m, rentType: type, energyLabel: label, occupancy: vacant ? 'vacant' : 'let' });
+    }
+    const price = Math.round(rent / (x.bar / 100) / 5e5) * 5e5;
+    const [p] = await db.insert(S.properties).values({ address: x.address, postcode: x.postcode, city: x.city, district: x.district, lat: x.lat, lng: x.lng, areaM2: area, buildYear: x.year, category: x.category, propertyType: x.propertyType, propertyTypeNl: x.propertyTypeNl, tenure: x.tenure, energyLabel: x.label, wozValue: Math.round(price * x.wozF), wozYear: 2026, image: x.image }).returning();
+    for (let i = 0; i < unitRows.length; i += 200) await db.insert(S.units).values(unitRows.slice(i, i + 200).map(u => ({ ...u, propertyId: p.id })));
+    const [l] = await db.insert(S.listings).values({ propertyId: p.id, slug: x.slug, name: x.name, nameNl: x.nameNl, description: x.description, descriptionNl: x.descriptionNl, highlights: x.highlights, status: x.status, dealType: 'institutional', askingPrice: price, grossRentAnnual: rent, operatingCostsAnnual: Math.round(rent * (x.mix === 'new' ? 0.19 : 0.23)), occupancy: x.occupancy, demand: 14, featured: false, publishedAt: new Date(now - (x.mix === 'new' ? 4 : 12) * day) }).returning();
+    for (const [folder, files, dl] of [...FOLDERS, ['Process', ['Information memorandum', 'Process letter', 'Draft share purchase agreement'], false] as [string, string[], boolean]]) for (const f of files) {
+      const pdf = await samplePdf(f, `${x.name} · ${x.propertyType}`, [`Fictional ${f.toLowerCase()} for ${x.name}: ${x.units} homes, ${x.district}. In production the capital-markets team uploads the real file; tenant data is redacted (AVG).`, `Guide price €${price.toLocaleString('nl-NL')} k.k. · gross rent €${rent.toLocaleString('nl-NL')} a year.`]);
+      await db.insert(S.documents).values({ listingId: l.id, folder, filename: f + '.pdf', storageKey: await saveFile(db, pdf, f + '.pdf'), downloadAllowed: dl });
+    }
+    const deadlines: Record<string, number> = x.stage === 2 ? { indicative: 9, shortlist: 16, dataroom: 30, final: 44, signing: 70 } : { indicative: 21, shortlist: 28, dataroom: 42, final: 60, signing: 90 };
+    await db.insert(S.saleProcesses).values({ listingId: l.id, stage: x.stage, minTicket: 25000000, advisor: x.advisor, stages: STAGES.map(([key, label]) => ({ key, label, deadline: deadlines[key] ? iso(deadlines[key]) : null })) });
+    if (x.slug === 'project-tulip') {
+      for (const [i, b] of bidders.entries()) {
+        await db.insert(S.ndaSignatures).values({ userId: b.id, listingId: l.id, signedName: b.name, templateVersion: 'NDA v1.2 (NL/EN)', ip: 'seed' }).onConflictDoNothing();
+        await db.insert(S.offers).values({ listingId: l.id, userId: b.id, bidderLabel: b.companyName, amount: Math.round(price * (i ? 0.965 : 0.985) / 1e5) * 1e5, conditions: ['Indicative bid', 'Subject to due diligence'], financingType: i ? 'Cash' : 'Mixed', status: 'indicative', message: 'Indicative, non-binding. Subject to IC approval and confirmatory due diligence.', leadScore: 80, leadBand: 'Hot' });
+      }
+      await db.insert(S.qaItems).values([
+        { listingId: l.id, category: 'Financial', question: 'Can you split the rent roll by city and by regulation segment (social / mid / free)?', answer: 'Yes. The rent roll in the Financial folder now has a city column and a WWS segment column per unit. Summary: 20% social, 40% mid-rent, 40% free-sector.', answeredBy: 'Capital Markets team', answeredAt: new Date(now - 6 * day), createdAt: new Date(now - 7 * day) },
+        { listingId: l.id, category: 'Legal', question: 'Which complexes are on ground lease, and when are the canon revisions?', answer: 'Seven complexes (18% of units), all Amsterdam. Five are converted to perpetual with canon fixed; two have revisions in 2031 and 2034. Details in Legal › Ground lease conditions.', answeredBy: 'Capital Markets team', answeredAt: new Date(now - 4 * day), createdAt: new Date(now - 5 * day) },
+        { listingId: l.id, category: 'Technical', question: 'Is there a long-term maintenance plan (MJOP) per complex?', answer: 'Yes, MJOPs for all 42 complexes are in Technical › Building inspection 2025, with a 10-year capex total of €31.2m.', answeredBy: 'Capital Markets team', answeredAt: new Date(now - 3 * day), createdAt: new Date(now - 3 * day - 5 * 36e5) },
+        { listingId: l.id, category: 'Process', question: 'Is the vendor open to a share deal instead of an asset deal?', answer: 'The vendor prefers a share deal (SPV with fiscal unity ending at closing). Asset-deal bids are accepted but will be compared on a net basis including transfer tax.', answeredBy: 'Capital Markets team', answeredAt: new Date(now - 2 * day), createdAt: new Date(now - 2 * day - 3 * 36e5) },
+        ...(pro ? [{ listingId: l.id, userId: pro.id, category: 'Financial', question: 'What indexation was applied to the free-sector leases in 2025 and 2026?' }] : []),
+      ]);
+    }
+  }
+  await db.insert(S.automationLog).values({ rule: 'system', text: 'Private deal rooms added: Project Tulip, Project Delta' });
 }
 
 /** Sample conversation for the messaging demo. Also runs on databases seeded before messaging existed (only when there are no messages yet). */

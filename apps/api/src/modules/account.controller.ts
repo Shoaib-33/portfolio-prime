@@ -18,7 +18,7 @@ export const publicUser = (u: any) => u && ({ id: u.id, name: u.name, email: u.e
 export class AccountController {
   constructor(@Inject('DB') private db: DB) {}
   @Post('auth/register') async register(@Req() req: R, @Res({ passthrough: true }) res: Response, @Body() body: unknown) {
-    const b = parse(z.object({ name: z.string().trim().min(2).max(80), email: z.string().trim().toLowerCase().email().max(160), password: z.string().min(8).max(200), investorType: z.enum(['Private person', 'Private BV', 'Fund', 'Family office', 'Developer']), country: z.string().length(2), companyName: z.string().max(120).optional(), acceptTerms: z.literal(true), locale: z.enum(['nl', 'en']).default('en') }), body);
+    const b = parse(z.object({ name: z.string().trim().min(2).max(80), email: z.string().trim().toLowerCase().email().max(160), password: z.string().min(8).max(200), investorType: z.enum(['Private person', 'Private BV', 'Fund', 'Family office', 'Pension fund', 'Insurer', 'Developer']), country: z.string().length(2), companyName: z.string().max(120).optional(), acceptTerms: z.literal(true), locale: z.enum(['nl', 'en']).default('en') }), body);
     if ((await this.db.select().from(S.users).where(eq(S.users.email, b.email)))[0]) throw new ConflictException('An account with this email already exists.');
     const [u] = await this.db.insert(S.users).values({ name: b.name, email: b.email, passwordHash: hashPassword(b.password), investorType: b.investorType, country: b.country.toUpperCase(), companyName: b.companyName, locale: b.locale, lastLoginAt: new Date() }).returning();
     res.cookie(SESSION_COOKIE, await createSession(this.db, u.id, true), cookieOpts);

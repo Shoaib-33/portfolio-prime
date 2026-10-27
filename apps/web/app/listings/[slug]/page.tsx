@@ -7,6 +7,8 @@ import { ListingsMap, MapPoint } from '@/components/map';
 import { siteUrl, listingJsonLd, JsonLd } from '@/lib/seo';
 import { ListingCard, Shield } from '@/components/ui';
 import { ActionForm, Calculator, Countdown, DocButtons, Ring, SaveButton } from '@/components/client';
+import { AnalysisTab, ProcessTab } from '@/components/analysis';
+import { Analyst } from '@/components/analyst';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params; const r = await api(`/listings/${slug}`); if (!r.ok) return { title: 'Listing | Portfolio & Prime' };
@@ -21,8 +23,11 @@ export default async function ListingPage({ params, searchParams }: { params: Pr
   const [me, lang, res, cfg, others] = await Promise.all([getMe(), getLang(), api(`/listings/${slug}`), api('/config/public'), api('/listings')]);
   if (res.status === 404) notFound(); if (!res.ok) return <section className="section empty"><h1>Could not load this listing.</h1><p>{res.data?.message}</p></section>;
   const l = res.data; const t = tr(lang); const u = me.user; const nl = lang === 'nl';
+  if (l.locked && l.dealType === 'institutional') return <PrivateTeaser l={l} me={me} />;
   if (l.locked) return <section className="section detail-top"><Link className="breadcrumb" href="/listings">← {t('Back to the offering')}</Link><div className="offmarket-lock"><img className="private-image" src={`/img/${l.image}.jpg`} alt="" /><div><Shield /><p className="eyebrow light">OFF-MARKET · PRO FIRST LOOK</p><h1>{l.propertyType} · {l.city} region</h1><p>Investor Pro members see this deal first. {l.offMarket === 'pro-window' ? <>Opens for you in <Countdown until={l.proEarlyAccessUntil} />.</> : 'Verified investors get access 48 hours after Pro members.'}</p><Link className="btn cream" href={l.offMarket === 'pro-window' ? '/account/upgrade' : u ? '/account/verify' : '/register'}>{l.offMarket === 'pro-window' ? 'Upgrade to Pro' : u ? 'Get verified' : t('Join free')} ↗</Link></div></div></section>;
-  const tabs: [string, string][] = [['overview', t('The property')], ['investment', l.bar ? t('Investment') : 'Costs'], ...(l.unitsCount > 1 ? [['units', t('Units & rent roll')] as [string, string]] : []), ['dataroom', t('Data room')]];
+  const inst = l.dealType === 'institutional';
+  const tabs: [string, string][] = [['overview', t('The property')], ...(inst ? [['process', 'Process & Q&A'] as [string, string]] : []), ['investment', l.bar ? t('Investment') : 'Costs'], ['analysis', 'Analysis'], ['ai', 'Ask the AI analyst'], ...(l.unitsCount > 1 ? [['units', t('Units & rent roll')] as [string, string]] : []), ['dataroom', t('Data room')]];
+  const aiMode = tab === 'ai' ? (await api('/ai/status')).data?.mode : '';
   const kf: [string, any, boolean][] = [[t('Asking price (k.k.)'), l.askingPrice ? money(l.askingPrice) : l.priceDisplay, true], ['BAR', l.bar ? pct(l.bar) : '—', true], ['NAR', l.nar ? pct(l.nar) : '—', false], [t('Price per m²'), money(l.perM2), false], [t('WOZ value'), money(l.wozValue), false], [t('Energy label'), l.energyLabel ? <i className="energy">{l.energyLabel}</i> : '—', false], [l.unitsCount > 1 ? t('Units') : t('Living area'), l.unitsCount > 1 ? l.unitsCount : l.areaM2 + ' m²', true], [t('Occupancy'), l.occupancy ? l.occupancy + '%' : l.bar ? '—' : 'Vacant', false], [t('Tenure'), l.tenure, false], [t('Build year'), l.buildYear, false]];
   const base = await siteUrl();
   return <>
@@ -32,7 +37,7 @@ export default async function ListingPage({ params, searchParams }: { params: Pr
       <div className="detail-media"><img src={`/img/${l.image}.jpg`} alt={`Reference architecture for ${l.name}`} /><span className="photo-label">Reference photography · illustrative listing</span><span className="score-badge big"><Ring v={l.dealScore.total} cls="sm" /><span>{t('Deal score')}<small>{l.dealScore.band}</small></span></span></div>
       <div className={`kf-panel ${l.full ? '' : 'gated'}`}>{kf.map(([k, v, pub]) => <div key={k} className={!l.full && !pub ? 'blurred' : ''}><span>{k}</span><strong>{!l.full && !pub ? '••••' : v}</strong></div>)}{!l.full && <div className="kf-gate"><Shield /><p>{t('Join free to see the full financials, address and floor plans.')}</p><Link className="btn navy small" href={`/register?next=/listings/${l.slug}`}>{t('Join free')} ↗</Link></div>}</div></section>
     <section className="section detail-layout"><div><div className="tabs" role="tablist">{tabs.map(([id, label]) => <Link key={id} role="tab" aria-selected={tab === id} href={`/listings/${l.slug}?tab=${id}`} scroll={false}>{label}</Link>)}</div>
-      <div className="tab-panel">{tab === 'overview' ? <Overview l={l} nl={nl} /> : tab === 'investment' ? <Investment l={l} /> : tab === 'units' ? await Units(l, me) : await DataRoom(l, me)}</div></div>
+      <div className="tab-panel">{tab === 'overview' ? <Overview l={l} nl={nl} /> : tab === 'investment' ? <Investment l={l} /> : tab === 'analysis' ? <AnalysisTab l={l} me={me} /> : tab === 'process' && inst ? <ProcessTab l={l} me={me} /> : tab === 'ai' ? (u ? <Analyst slug={l.slug} name={l.name} mode={aiMode} suggestions={[...(inst ? ['Where are we in the sale process?'] : []), 'Give me a summary', 'What are the biggest risks?', 'What happens if rates rise 200 bp?', ...(l.unitsCount > 1 ? ['How exposed is the rent roll to the WWS caps?'] : ['Is the asking price in line with the market?'])].slice(0, 4)} /> : <Gate title="Ask the AI analyst." text="An analyst that answers from this property’s figures, rent roll and market data, with sources. Join free to ask." steps={[['Account', false]]} cta={['Join free', `/register?next=/listings/${l.slug}?tab=ai`]} />) : tab === 'units' ? await Units(l, me) : await DataRoom(l, me)}</div></div>
       <Sidebar l={l} me={me} t={t} buyerFee={cfg.data.buyerFee} /></section>
     <section className="section related"><div className="section-heading"><div><p className="eyebrow">KEEP EXPLORING</p><h2>Another perspective.</h2></div><Link className="text-link" href="/listings">{t('View all')} ↗</Link></div><div className="property-grid">{(others.data || []).filter((x: any) => x.slug !== l.slug && !x.locked).slice(0, 3).map((x: any) => <ListingCard key={x.slug} l={x} lang={lang} signedIn={!!u} />)}</div></section></>;
 }
@@ -68,6 +73,18 @@ function AccessGate({ l, me, title, text }: { l: any; me: Me; title: string; tex
   const cta: [string, string] | null = next === 'Account' ? ['Join free', `/register?next=/listings/${l.slug}?tab=dataroom`] : next === 'KYC verified' ? (pending ? null : ['Start verification', '/account/verify']) : next === 'Two-factor login' ? [u?.twofaEnabled ? 'Log in again with your code' : 'Set up two-factor login', u?.twofaEnabled ? `/login?next=/listings/${l.slug}?tab=dataroom` : `/account/security?next=/listings/${l.slug}?tab=dataroom`] : null;
   return <Gate title={title} text={text} steps={steps} cta={cta} note={pending ? 'Your KYC documents are with our compliance officer.' : undefined} />;
 }
+/** Codename teaser for a private deal room: enough for an institution to request access, nothing that identifies the assets. */
+function PrivateTeaser({ l, me }: { l: any; me: Me }) {
+  const u = me.user; const steps: [string, boolean][] = [['Account', !!u], ['KYB verified', !!u?.verified], ['Institutional investor', false], ['Deal-room NDA', false]];
+  const cta: [string, string] = !u ? ['Register as an institution', `/register?next=/listings/${l.slug}`] : !u.verified ? ['Start KYB verification', '/account/verify'] : ['Request institutional access', '/account/messages?listing=general'];
+  return <section className="section detail-top"><Link className="breadcrumb" href="/institutional">← Private deal rooms</Link>
+    <div className="offmarket-lock"><img className="private-image" src={`/img/${l.image}.jpg`} alt="" /><div><Shield /><p className="eyebrow light">PRIVATE DEAL ROOM · QUALIFIED INVESTORS</p><h1>{l.name}</h1>
+      <p>{l.propertyType} · {l.unitsCount.toLocaleString('en-GB')} units · {l.areaM2.toLocaleString('en-GB')} m² · guide {l.priceDisplay}</p>
+      <ul className="teaser-list">{(l.highlights || []).map((h: string) => <li key={h}>{h}</li>)}</ul>
+      <p>Open to verified funds, family offices, pension funds and insurers after KYB with proof of funds and a deal-room NDA.</p>
+      <div className="gate-steps light">{steps.map(([s, ok], i) => <span key={s} className={ok ? 'done' : ''}>{ok ? '✓' : String(i + 1).padStart(2, '0')} · {s}</span>)}</div>
+      <Link className="btn cream" href={cta[1]}>{cta[0]} ↗</Link></div></div></section>;
+}
 const Steps = ({ steps }: { steps: [string, boolean][] }) => <div className="gate-steps">{steps.map(([s, ok], i) => <span key={s} className={ok ? 'done' : ''}>{ok ? '✓' : String(i + 1).padStart(2, '0')} · {s}</span>)}</div>;
 function Gate({ title, text, steps, cta, note }: { title: string; text: string; steps: [string, boolean][]; cta?: [string, string] | null; note?: string }) { return <div className="access-gate"><Shield /><h2>{title}</h2><p>{text}</p><Steps steps={steps} />{cta && <Link className="btn navy" href={cta[1]}>{cta[0]} ↗</Link>}{note && <p className="fine-print">{note}</p>}</div>; }
 
@@ -81,6 +98,7 @@ function Sidebar({ l, me, t, buyerFee }: { l: any; me: Me; t: (s: string) => str
   else if (!u) primary = <Link className="btn navy" href={`/register?next=/listings/${l.slug}`}>Request access ↗</Link>;
   else if (u.staff) primary = <Link className="btn navy" href="/admin?tab=offers">Open in staff workspace ↗</Link>;
   else if (!u.verified) primary = me.kyc?.status === 'pending' ? <p className="note">Your verification is being reviewed.</p> : <Link className="btn navy" href="/account/verify">{t('Verify to make offers')} ↗</Link>;
+  else if (l.dealType === 'institutional') primary = <Link className="btn navy" href={`/listings/${l.slug}?tab=process`}>Open the sale process ↗</Link>;
   else primary = b ? (b.status === 'open' ? bidForm : null) : offerForm;
   return <aside className="enquiry-card"><span className="eyebrow">{t('YOUR NEXT STEP')}</span><div className="side-price"><b>{l.askingPrice ? money(l.askingPrice) : l.priceDisplay}</b><small>{l.askingPrice ? 'k.k. · ' : ''}{buyerFee ? `Buyer’s fee ${buyerFee}%` : 'No buyer’s fee on our own stock.'}</small></div>
     {b && <div className="bid-box"><p className="eyebrow">SEALED BID ROUND</p>{b.status === 'open' ? <><p className="muted-small">Closes in</p><Countdown until={b.closesAt} boxes /><div className="bid-meta"><span>Minimum bid<b>{money(b.minBid)}</b></span><span>{b.sealedBids} sealed bids received</span></div>{l.myBid && <p className="your-bid">✓ Your bid: {money(l.myBid.amount)} · {l.myBid.conditions.join(', ')}</p>}</> : <p>Bidding has {b.status === 'awarded' ? 'been awarded. All bidders were notified.' : 'closed. Results follow shortly.'}</p>}</div>}

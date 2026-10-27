@@ -5,10 +5,11 @@ import { AccountController } from './modules/account.controller';
 import { DealsController } from './modules/deals.controller';
 import { AdminController } from './modules/admin.controller';
 import { MessagesController } from './modules/messages.controller';
+import { InstitutionalController } from './modules/institutional.controller';
 import { JobsService } from './modules/jobs.service';
 
 @Module({
-  controllers: [PublicController, AccountController, DealsController, AdminController, MessagesController],
+  controllers: [PublicController, AccountController, DealsController, AdminController, MessagesController, InstitutionalController],
   providers: [{ provide: 'DB', useFactory: getDb }, JobsService],
 })
 export class AppModule {}

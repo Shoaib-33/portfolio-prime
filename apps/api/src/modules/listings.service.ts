@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql, desc, notInArray } from 'drizzle-orm';
 import { DB, schema as S } from '../db/client';
-import { Viewer, matchesSearch, alertFrequency, tierOf, isStaff, canDetails, provinceOf, distanceKm, CITY_GEO } from '../domain';
+import { Viewer, matchesSearch, alertFrequency, tierOf, isStaff, canDetails, provinceOf, distanceKm, CITY_GEO, isQualified } from '../domain';
 import { resolvePlace } from '../geo';
 import { serializeListing, getConfig, notify, logRule, ruleOn, draftEmail } from '../common';
 
@@ -56,6 +56,7 @@ export async function runMatching(db: DB, listingId: string, audience: 'publish'
   for (const u of investors) {
     if (u.deletedAt) continue; const tier = tierOf({ id: u.id, verified: u.verified, pro: u.pro });
     if (l.dealType === 'off_market') { if (audience === 'publish' && tier !== 'pro') continue; if (audience === 'release' && tier !== 'verified') continue; }
+    if (l.dealType === 'institutional' && !isQualified({ id: u.id, verified: u.verified, investorType: u.investorType })) continue;
     const b = boxes[u.id]; const fitBox = b && matchesSearch(subject, { regions: b.regions, types: b.types, ticketMin: b.ticketMin, ticketMax: b.ticketMax, targetBar: b.targetBar });
     const fitSearch = searches.some(s => s.userId === u.id && matchesSearch(subject, s.filters));
     if (!fitBox && !fitSearch) continue;

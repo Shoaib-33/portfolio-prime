@@ -11,6 +11,19 @@ export async function samplePdf(title: string, subtitle: string, paragraphs: str
   page.drawText('Fictional demonstration document. Not a legal, technical or financial document.', { x: 50, y: 50, size: 8, font: f, color: rgb(0.6, 0.3, 0.2) });
   return Buffer.from(await doc.save());
 }
+/** Multi-page document (investment committee memo): sections of headings, paragraphs and "- " bullets, wrapped and paginated. */
+export async function memoPdf(title: string, subtitle: string, sections: { heading: string; lines: string[] }[], footer: string) {
+  const doc = await PDFDocument.create(); const f = await doc.embedFont(StandardFonts.Helvetica), fb = await doc.embedFont(StandardFonts.HelveticaBold);
+  let page = doc.addPage([595, 842]); let y = 760;
+  const header = () => page.drawText('PORTFOLIO & PRIME · INVESTMENT COMMITTEE MEMO · DRAFT', { x: 50, y: 800, size: 8, font: fb, color: rgb(0.42, 0.45, 0.43) });
+  const need = (h: number) => { if (y - h < 70) { page.drawText(safe(footer), { x: 50, y: 40, size: 7, font: f, color: rgb(0.6, 0.3, 0.2) }); page = doc.addPage([595, 842]); header(); y = 770; } };
+  const wrap = (text: string, font: any, size: number, x: number, width: number, color = rgb(0.13, 0.2, 0.2)) => { const words = safe(text).split(' '); let line = ''; for (const w of words) { if (font.widthOfTextAtSize(line + w, size) > width && line) { need(size + 5); page.drawText(line, { x, y, size, font, color }); y -= size + 5; line = ''; } line += w + ' '; } if (line.trim()) { need(size + 5); page.drawText(line, { x, y, size, font, color }); y -= size + 5; } };
+  header(); wrap(title, fb, 22, 50, 495, rgb(0.09, 0.18, 0.2)); y -= 4; wrap(subtitle, f, 10.5, 50, 495, rgb(0.35, 0.38, 0.36)); y -= 14;
+  for (const s of sections) { need(40); y -= 6; wrap(s.heading.toUpperCase(), fb, 10, 50, 495, rgb(0.42, 0.3, 0.16)); y -= 3;
+    for (const l of s.lines) { const b = l.startsWith('- '); if (b) { need(14); page.drawText('•', { x: 54, y, size: 10, font: f }); } wrap(b ? l.slice(2) : l, f, 10, b ? 66 : 50, b ? 479 : 495); y -= 3; } y -= 6; }
+  page.drawText(safe(footer), { x: 50, y: 40, size: 7, font: f, color: rgb(0.6, 0.3, 0.2) });
+  return Buffer.from(await doc.save());
+}
 /** Dynamic watermark on every page (plan: name, email, date), applied on the server for each view. */
 export async function watermark(bytes: Buffer, text: string) {
   const doc = await PDFDocument.load(bytes); const f = await doc.embedFont(StandardFonts.HelveticaBold); const t = safe(text);

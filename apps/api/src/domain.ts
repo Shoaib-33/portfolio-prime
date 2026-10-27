@@ -1,6 +1,6 @@
 /* Pure business rules. No database access here, so they are easy to test (plan: 100% branch coverage on calculators and access rules). */
 export type Tier = 'visitor' | 'free' | 'verified' | 'pro';
-export interface Viewer { id?: string; role?: string; verified?: boolean; pro?: boolean; twofaEnabled?: boolean }
+export interface Viewer { id?: string; role?: string; verified?: boolean; pro?: boolean; twofaEnabled?: boolean; investorType?: string }
 export const STAFF_ROLES = ['admin', 'acquisition', 'sales', 'compliance', 'editor', 'readonly'];
 export const isStaff = (v?: Viewer | null) => !!v && STAFF_ROLES.includes(v.role || '');
 export function tierOf(v?: Viewer | null): Tier { if (!v?.id) return 'visitor'; if (v.pro && v.verified) return 'pro'; if (v.verified) return 'verified'; return 'free'; }
@@ -9,8 +9,14 @@ export const alertFrequency = (v?: Viewer | null) => ({ visitor: null, free: 'we
 export const canDetails = (v?: Viewer | null) => tierOf(v) !== 'visitor' || isStaff(v);
 export const canOffer = (v?: Viewer | null) => !!v?.verified;
 
-/** Off-market visibility: Pro first, verified investors after the early-access window, everyone else locked. */
+/* Qualified (institutional) investors: verified funds, family offices, pension funds and insurers (KYB + proof of funds). */
+export const INSTITUTIONAL_TYPES = ['Fund', 'Family office', 'Pension fund', 'Insurer', 'Institutional investor'];
+export const isQualified = (v?: Viewer | null) => isStaff(v) || (!!v?.verified && INSTITUTIONAL_TYPES.includes(v.investorType || ''));
+
+/** Off-market visibility: Pro first, verified investors after the early-access window, everyone else locked.
+    Institutional deals (private deal rooms) open to qualified investors only. */
 export function offMarketState(dealType: string, proUntil: Date | string | null, v?: Viewer | null, now = Date.now()): 'open' | 'pro-window' | 'locked' {
+  if (dealType === 'institutional') return isQualified(v) ? 'open' : 'locked';
   if (dealType !== 'off_market' || isStaff(v)) return 'open';
   const t = tierOf(v);
   if (t === 'pro') return 'open';
@@ -20,7 +26,7 @@ export function offMarketState(dealType: string, proUntil: Date | string | null,
 
 export function priceBand(price: number, onRequest = false): string {
   if (onRequest) return 'Price on request';
-  const step = price < 2e6 ? 250000 : 500000; const lo = Math.floor(price / step) * step;
+  const step = price < 2e6 ? 250000 : price < 5e7 ? 500000 : 5e7; const lo = Math.floor(price / step) * step;
   const f = (x: number) => String(+(x / 1e6).toFixed(2));
   return `€${f(lo)}–${f(lo + step)}m`;
 }
@@ -36,6 +42,10 @@ export const CONFIG_DEFAULTS: { key: string; label: string; value: number; unit:
   { key: 'pro_price_month', label: 'Investor Pro · monthly', value: 99, unit: '€', validFrom: '2026-01-01' },
   { key: 'pro_price_year', label: 'Investor Pro · yearly', value: 990, unit: '€', validFrom: '2026-01-01' },
   { key: 'source_of_funds_threshold', label: 'Source-of-funds check above', value: 1000000, unit: '€', validFrom: '2026-01-01' },
+  { key: 'wws_social_points', label: 'WWS · social rent up to (points)', value: 143, unit: 'pts', validFrom: '2026-07-01' },
+  { key: 'wws_mid_points', label: 'WWS · mid rent up to (points)', value: 186, unit: 'pts', validFrom: '2026-07-01' },
+  { key: 'wws_rent_per_point', label: 'WWS · maximum rent per point (approx.)', value: 6.4, unit: '€', validFrom: '2026-07-01' },
+  { key: 'institutional_min_ticket', label: 'Private deal room · minimum ticket', value: 25000000, unit: '€', validFrom: '2026-01-01' },
 ];
 export const cfg = (c: ConfigMap, key: string) => (c && c[key] !== undefined ? Number(c[key]) : CONFIG_DEFAULTS.find(x => x.key === key)?.value ?? 0);
 
@@ -84,7 +94,7 @@ export function kycRisk({ investorType = 'Private person', country = 'NL', ticke
 export const DEAL_STAGES = ['Offer accepted', 'LOI signed', 'Purchase agreement signed', 'Cooling-off period (3 days, private buyers)', 'Deposit paid to notary', 'Due diligence & conditions lapse', 'Notary transfer'];
 export const LEAD_STAGES = ['new', 'contacted', 'valuation', 'offer_made', 'under_contract', 'acquired', 'lost'];
 export const LISTING_STATUSES = ['draft', 'coming_soon', 'available', 'under_offer', 'sold_stc', 'sold', 'withdrawn'];
-export const DEAL_TYPES = ['direct', 'portfolio', 'bid_round', 'off_market'];
+export const DEAL_TYPES = ['direct', 'portfolio', 'bid_round', 'off_market', 'institutional'];
 
 /** Simulated BAG response. Production: BAG API Individuele Bevragingen v2 behind the same adapter. */
 export function bagLookup(postcode: string, number: string) {
