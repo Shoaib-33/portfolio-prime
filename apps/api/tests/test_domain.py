@@ -10,7 +10,7 @@ def test_tiers():
     assert tier_of(None) == 'visitor' and tier_of({'id': 'a'}) == 'free' and tier_of({'id': 'a', 'verified': True}) == 'verified' and tier_of({'id': 'a', 'verified': True, 'pro': True}) == 'pro'
     assert tier_of({'id': 'a', 'pro': True}) == 'free', 'Pro without verification is not Pro'
     assert can_details(None) is False and can_details({'id': 'a'}) is True and can_offer({'id': 'a'}) is False and can_offer({'id': 'a', 'verified': True}) is True
-    assert is_staff({'id': 's', 'role': 'compliance'}) and not is_staff({'id': 'i', 'role': 'investor'}) and can_details({'id': 's', 'role': 'admin'})
+    assert is_staff({'id': 's', 'role': 'admin'}) and is_staff({'id': 'd', 'role': 'developer'}) and not is_staff({'id': 'x', 'role': 'sales'}) and not is_staff({'id': 'i', 'role': 'investor'}) and can_details({'id': 's', 'role': 'admin'})
     assert [alert_frequency(v) for v in [None, {'id': 'a'}, {'id': 'a', 'verified': True}, {'id': 'a', 'verified': True, 'pro': True}]] == [None, 'weekly', 'daily', 'instant']
 
 
@@ -18,7 +18,7 @@ def test_off_market():
     until = datetime(2026, 10, 26, 9, tzinfo=timezone.utc); before = until.timestamp() * 1000 - 1; after = until.timestamp() * 1000 + 1
     assert off_market_state('off_market', until, None, before) == 'locked' and off_market_state('off_market', until, {'id': 'a'}, before) == 'locked'
     assert off_market_state('off_market', until, {'id': 'a', 'verified': True}, before) == 'pro-window' and off_market_state('off_market', until, {'id': 'a', 'verified': True}, after) == 'open'
-    assert off_market_state('off_market', until, {'id': 'a', 'verified': True, 'pro': True}, before) == 'open' and off_market_state('off_market', until, {'id': 's', 'role': 'sales'}, before) == 'open'
+    assert off_market_state('off_market', until, {'id': 'a', 'verified': True, 'pro': True}, before) == 'open' and off_market_state('off_market', until, {'id': 's', 'role': 'admin'}, before) == 'open'
     assert off_market_state('direct', None, None) == 'open'
 
 
@@ -63,7 +63,7 @@ def test_matching():
 
 def test_qualified():
     assert is_qualified({'id': 'a', 'verified': True, 'investorType': 'Pension fund'}) and not is_qualified({'id': 'a', 'verified': False, 'investorType': 'Fund'})
-    assert not is_qualified({'id': 'a', 'verified': True, 'investorType': 'Private BV'}) and off_market_state('institutional', None, {'id': 's', 'role': 'sales'}) == 'open' and off_market_state('institutional', None, None) == 'locked'
+    assert not is_qualified({'id': 'a', 'verified': True, 'investorType': 'Private BV'}) and off_market_state('institutional', None, {'id': 's', 'role': 'admin'}) == 'open' and off_market_state('institutional', None, None) == 'locked'
 
 
 def test_irr_and_scenarios():
@@ -102,5 +102,5 @@ def test_invite_only_access():
     assert not can_see_listing(None, 'L1') and can_see_listing({'id': 'a', 'role': 'admin'}, 'L1') and can_see_listing({'id': 'd', 'role': 'developer'}, 'L1')
     inv = {'id': 'u', 'role': 'investor', 'listingScope': 'selected', 'listingIds': ['L1', 'L2', 'L3'], 'features': ['map']}
     assert can_see_listing(inv, 'L2') and not can_see_listing(inv, 'L4') and can_see_listing({**inv, 'listingScope': 'all'}, 'L4')
-    assert has_feature(inv, 'map') and not has_feature(inv, 'analyst') and not has_feature(None, 'map') and has_feature({'id': 's', 'role': 'sales'}, 'analyst')
+    assert has_feature(inv, 'map') and not has_feature(inv, 'analyst') and not has_feature(None, 'map') and has_feature({'id': 's', 'role': 'admin'}, 'analyst')
     assert features_of({**inv, 'features': ['bogus', 'map']}) == ['map'] and features_of({'id': 'a', 'role': 'admin'}) == FEATURE_KEYS

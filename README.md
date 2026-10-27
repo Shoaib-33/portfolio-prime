@@ -26,18 +26,19 @@ Reset the demo database: stop the server, then `npm run seed -- --reset`.
 
 Password for all: `Demo2026!`. One-click buttons are on the login page. Accounts with two-factor login show the current code in demo mode.
 
-| Account | What it shows |
-|---|---|
-| free@demo.nl | Invited buyer: exactly 3 shared properties; map, analysis and messages switched on |
-| verified@demo.nl | Verified buyer: 6 properties; NDA, data room, offers, bid round (2FA on) |
-| pro@demo.nl | Investor Pro: all properties (including future ones) and every feature |
-| fund@demo.nl | Institutional (pension fund): private deal rooms, sale process, bids, Q&A, IC memo, AI analyst |
-| admin@demo.nl | Staff, all rights; manages People & access |
-| developer@demo.nl | Developer: all rights, including People & access and CRM & API keys |
-| /invite/demo-invite-pieter | A pending invitation (Pieter de Vries, 3 properties) to try the activation flow |
-| compliance@demo.nl | Staff: KYC queue, audit log, flagging |
-| sales@demo.nl | Staff: offers, deals, bid rounds |
-| acquisition@demo.nl | Staff: seller leads, BAG lookup, listings |
+Three kinds of user:
+
+| Account | Role | What it can do |
+|---|---|---|
+| developer@demo.nl | Developer | Everything, including the CRM & API settings and creating admin or developer accounts |
+| admin@demo.nl | Admin | Runs the staff workspace and invites investors, choosing per person which properties and features they see |
+| free@demo.nl | Investor | 3 shared properties; map, analysis and messages switched on |
+| verified@demo.nl | Investor | Verified buyer: 6 properties; NDA, data room, offers, bid round (2FA on) |
+| pro@demo.nl | Investor | All properties (including future ones) and every feature |
+| fund@demo.nl | Investor | Pension fund: private deal rooms, sale process, bids, Q&A, IC memo, AI analyst |
+| /invite/demo-invite-pieter | Investor (invited) | A pending invitation to try the activation flow |
+
+Investors cannot sign up themselves; an admin (or developer) creates their account and sends a personal invitation link. Accounts with the earlier staff roles (sales, compliance, acquisition) are deactivated at start-up; their history stays in the database.
 
 ## Architecture
 
@@ -60,9 +61,9 @@ Public site, listings with filters (type, city, province, radius around a city o
 ## Invite-only access
 
 - **Visitors** see only the public company site (what we do, how access works, anonymised track record, guides) and a *Request access* form. There is no self-registration; `/api/listings`, details, map, market report and all tools answer 401.
-- **Admins and developers** create people in *Staff workspace › People & access*: name, role, the properties they see (a selection, or *all properties* including future CRM listings) and the features switched on (map, smart finder, market report, analysis & memo, AI analyst, data room, private deal rooms, offers & bids, messages, membership, sell to us; presets Viewer / Buyer / Institution / Everything). The invitation link (`/invite/<token>`, single use, 3–30 days, only a hash is stored) lets the person set a password. Admins can change access at any time (effective on the next request), send a new link, revoke it, or pause someone (signed out at once). Access requests from the website appear in the same tab.
+- **Admins** create investors in *Staff workspace › People & access* (developers can also create admins and developers): name, role, the properties they see (a selection, or *all properties* including future CRM listings) and the features switched on (map, smart finder, market report, analysis & memo, AI analyst, data room, private deal rooms, offers & bids, messages, membership, sell to us; presets Viewer / Buyer / Institution / Everything). The invitation link (`/invite/<token>`, single use, 3–30 days, only a hash is stored) lets the person set a password. Admins can change an investor's access at any time (effective on the next request), send a new link, revoke it, or pause someone (signed out at once). Access requests from the website appear in the same tab.
 - **Enforcement is on the server**: `can_see_listing` and `has_feature` in `apps/api/app/domain.py`, loaded per session in `app/common.py`; a property that is not shared answers 404, a feature that is off answers 403. Alerts (buy-box matches, price drops) only go to people who can see the property. The web layouts (`apps/web/components/gate.tsx`) only decide what to show instead of an error.
-- **CRM integration** (`app/routers/integrations.py`): the company CRM pushes listings to `POST /api/integrations/crm/listings` with an `x-api-key` (keys created and revoked in *CRM & API*, stored hashed; `PP_CRM_API_KEY` works as a bootstrap key). Upsert by `externalId` (one object or an array of up to 200), optional unit rent roll and `shareWith` emails; `DELETE /api/integrations/crm/listings/:externalId` withdraws. Photos may be `https://` URLs.
+- **CRM integration** (`app/routers/integrations.py`): the company CRM pushes listings to `POST /api/integrations/crm/listings` with an `x-api-key` (keys created and revoked by a developer in *CRM & API*, stored hashed; `PP_CRM_API_KEY` works as a bootstrap key). Upsert by `externalId` (one object or an array of up to 200), optional unit rent roll and `shareWith` emails; `DELETE /api/integrations/crm/listings/:externalId` withdraws. Photos may be `https://` URLs.
 
 ## Institutional layer
 

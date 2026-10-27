@@ -10,7 +10,7 @@ type FeatureDef = { key: string; label: string; desc: string; group: string };
 type Preset = { key: string; label: string; desc: string; features: string[] };
 type Person = { id: string; name: string; email: string; companyName: string | null; investorType: string; role: string; roleLabel: string; staff: boolean; status: string; listingScope: string; listingCount: number | null; features: string[]; verified: boolean; tierLabel: string | null; twofaEnabled: boolean; lastLoginAt: string | null; createdAt: string; invite: null | { state: string; expiresAt: string } };
 type Request = { id: string; name: string; email: string; message: string | null; status: string; createdAt: string; invited: boolean };
-export type AccessData = { users: Person[]; listings: Listing[]; features: FeatureDef[]; presets: Preset[]; roles: { key: string; label: string; staff: boolean }[]; investorTypes: string[]; requests: Request[] };
+export type AccessData = { users: Person[]; listings: Listing[]; features: FeatureDef[]; presets: Preset[]; roles: { key: string; label: string; staff: boolean; assignable: boolean }[]; me: { role: string }; investorTypes: string[]; requests: Request[] };
 
 async function call(url: string, method: string, json?: unknown) {
   const r = await fetch(url, { method, headers: { 'content-type': 'application/json' }, body: json === undefined ? undefined : JSON.stringify(json) });
@@ -88,6 +88,7 @@ function Editor({ p, data, onSaved }: { p: Person; data: AccessData; onSaved: (m
     call(`/api/admin/access/users/${p.id}`, 'GET').then(d => { setDetail(d); setIds(new Set(d.listingIds)); setScope(d.listingScope); setFeat(new Set(d.staff ? [] : d.features)); }).catch(e => setErr(e.message));
   }, [p.id]);
   const staffRole = data.roles.find(r => r.key === role)?.staff;
+  const locked = data.me.role !== 'developer' && p.role !== 'investor'; // admins manage investors; developers manage everyone
   const dirty = !!detail && (scope !== (detail as any).listingScope || role !== p.role || !same(ids, new Set(detail.listingIds)) || !same(feat, new Set((detail as any).staff ? [] : (detail as any).features)));
   const run = async (key: string, fn: () => Promise<any>, msg?: string) => { setBusy(key); setErr(''); try { const r = await fn(); if (msg) onSaved(msg); router.refresh(); return r; } catch (e: any) { setErr(e.message); } finally { setBusy(''); } };
   const save = () => run('save', async () => { await call(`/api/admin/access/users/${p.id}`, 'PUT', { role, listingScope: scope, listingIds: [...ids], features: [...feat] }); setDetail({ ...(detail as any), listingIds: [...ids], listingScope: scope, features: [...feat], staff: staffRole }); }, `Access for ${p.name} saved. It applies on their next click.`);
@@ -95,21 +96,21 @@ function Editor({ p, data, onSaved }: { p: Person; data: AccessData; onSaved: (m
   return <div className="editor">
     <div className="ed-head"><span className={`avatar-lg ${p.staff ? 'staff' : ''}`}>{initials(p.name)}</span><div className="ed-id"><h3>{p.name}</h3><p>{p.companyName ? `${p.companyName} · ` : ''}{p.email}</p>
       <div className="row tight wrap"><span className={`status-chip ${cls}`}><i />{label}</span>{!p.staff && p.tierLabel && <span className="chip">{p.tierLabel}</span>}{!p.staff && <span className="chip">{p.investorType}</span>}{p.lastLoginAt && <span className="chip ghost">Last seen {dateTime(p.lastLoginAt)}</span>}</div></div>
-      <label className="role-select">Role<select value={role} onChange={e => setRole(e.target.value)}>{data.roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
+      <label className="role-select">Role<select value={role} disabled={locked} onChange={e => setRole(e.target.value)}>{data.roles.map(r => <option key={r.key} value={r.key} disabled={!r.assignable}>{r.label}</option>)}</select></label></div>
 
     {p.status === 'invited' && <div className="invite-box"><div><b><Icon name="mail" /> {p.invite?.state === 'pending' ? `Invitation valid until ${date(p.invite.expiresAt)}` : 'The invitation link no longer works'}</b><small>Links are personal and work once. Creating a new one stops the old link.</small></div>
       <div className="row tight"><button type="button" className="btn small navy" disabled={!!busy} onClick={() => run('link', async () => { const r = await call(`/api/admin/access/users/${p.id}/invite`, 'POST', {}); setLink(window.location.origin + r.path); })}><Icon name="link" />{busy === 'link' ? 'Creating…' : 'New invitation link'}</button>
         {p.invite?.state === 'pending' && <button type="button" className="btn small outline" disabled={!!busy} onClick={() => run('revoke', () => call(`/api/admin/access/users/${p.id}/revoke-invite`, 'POST'), 'Invitation revoked.')}>Revoke</button>}</div>
       {link && <div className="link-out"><CopyField value={link} label="Copy link" /><small>Share this link with {p.name.split(' ')[0]} by email or WhatsApp. It is shown once.</small></div>}</div>}
 
-    {staffRole ? <div className="note soft"><Icon name="users" /> Staff see every property. What they can change depends on the role: {role === 'admin' || role === 'developer' ? 'admin and developer can do everything, including access and integrations.' : `${data.roles.find(r => r.key === role)?.label} works in their own area of the staff workspace.`}</div>
+    {staffRole ? <div className="note soft"><Icon name="users" /> {role === 'developer' ? 'Developers can do everything: the staff workspace, people & access, and the CRM & API settings.' : 'Admins see every property, invite and manage investors, and run the staff workspace.'}{locked ? ' Only a developer can change this account.' : ''}</div>
       : !detail ? <div className="skeleton" aria-busy="true"><i /><i /><i /></div> : <>
         <section className="ed-sec"><div className="ed-sec-h"><span className="num">1</span><div><h4>Properties</h4><p>What {p.name.split(' ')[0]} sees in their selection.</p></div></div><PropertyPicker listings={data.listings} scope={scope} setScope={setScope} ids={ids} setIds={setIds} /></section>
         <section className="ed-sec"><div className="ed-sec-h"><span className="num">2</span><div><h4>Features</h4><p>Menu items and tools that are switched on. Everything else stays hidden.</p></div></div><FeaturePicker features={data.features} presets={data.presets} on={feat} setOn={setFeat} /></section></>}
 
-    <div className={`save-bar ${dirty ? 'dirty' : ''}`}><span>{dirty ? 'Unsaved changes' : 'All changes saved'}</span>{err && <small className="form-error">{err}</small>}
+    {!locked && <div className={`save-bar ${dirty ? 'dirty' : ''}`}><span>{dirty ? 'Unsaved changes' : 'All changes saved'}</span>{err && <small className="form-error">{err}</small>}
       <div className="row tight">{p.status !== 'invited' && p.id && <button type="button" className="btn small outline" disabled={!!busy} onClick={() => run('status', () => call(`/api/admin/access/users/${p.id}/status`, 'POST', { status: p.status === 'suspended' ? 'active' : 'suspended' }), p.status === 'suspended' ? `${p.name} can log in again.` : `${p.name} is signed out and paused.`)}><Icon name={p.status === 'suspended' ? 'play' : 'pause'} />{p.status === 'suspended' ? 'Resume access' : 'Pause access'}</button>}
-        <button type="button" className="btn small navy" disabled={!dirty || !!busy} onClick={save}>{busy === 'save' ? 'Saving…' : 'Save access'}</button></div></div>
+        <button type="button" className="btn small navy" disabled={!dirty || !!busy} onClick={save}>{busy === 'save' ? 'Saving…' : 'Save access'}</button></div></div>}
   </div>;
 }
 const same = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every(x => b.has(x));
@@ -133,9 +134,9 @@ function InviteDrawer({ data, prefill, onClose }: { data: AccessData; prefill?: 
       : <form onSubmit={submit} noValidate={false}><div className="drawer-head"><div><p className="eyebrow">NEW INVITATION</p><h2>Invite someone.</h2><p>They get a personal link, set a password and see only what you choose here.</p></div><button type="button" className="icon-btn" aria-label="Close" onClick={onClose}><Icon name="x" /></button></div>
         <section className="ed-sec"><div className="ed-sec-h"><span className="num">1</span><div><h4>Who</h4></div></div>
           <div className="form-grid"><label>Full name<input name="name" required minLength={2} defaultValue={prefill?.name} autoFocus /></label><label>Email<input name="email" type="email" required defaultValue={prefill?.email} /></label>
-            <label>Company<input name="companyName" maxLength={120} defaultValue={prefill?.companyName} /></label><label>Role<select value={role} onChange={e => setRole(e.target.value)}>{data.roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}</select></label>
+            <label>Company<input name="companyName" maxLength={120} defaultValue={prefill?.companyName} /></label><label>Role<select value={role} onChange={e => setRole(e.target.value)}>{data.roles.filter(r => r.assignable).map(r => <option key={r.key} value={r.key}>{r.label}</option>)}</select></label>
             {!staffRole && <><label>Investor type<select name="investorType" defaultValue="Private BV">{data.investorTypes.map(t => <option key={t}>{t}</option>)}</select></label><label>Country<select name="country" defaultValue="NL">{[['NL', 'Netherlands'], ['BE', 'Belgium'], ['DE', 'Germany'], ['GB', 'United Kingdom'], ['FR', 'France'], ['LU', 'Luxembourg'], ['DK', 'Denmark'], ['AE', 'United Arab Emirates'], ['US', 'United States']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label></>}</div></section>
-        {staffRole ? <div className="note soft"><Icon name="users" /> {data.roles.find(r => r.key === role)?.label} is a staff role: they see every property and work in the staff workspace.</div> : <>
+        {staffRole ? <div className="note soft"><Icon name="users" /> {role === 'developer' ? 'A developer can do everything, including CRM & API settings.' : 'An admin sees every property, invites investors and runs the staff workspace.'}</div> : <>
           <section className="ed-sec"><div className="ed-sec-h"><span className="num">2</span><div><h4>Properties they see</h4></div></div><PropertyPicker listings={data.listings} scope={scope} setScope={setScope} ids={ids} setIds={setIds} /></section>
           <section className="ed-sec"><div className="ed-sec-h"><span className="num">3</span><div><h4>Features they can use</h4></div></div><FeaturePicker features={data.features} presets={data.presets} on={feat} setOn={setFeat} /></section></>}
         <section className="ed-sec"><div className="ed-sec-h"><span className="num">{staffRole ? 2 : 4}</span><div><h4>Invitation</h4></div></div>

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from .. import db
 from ..db import T, and_, desc, func, select
-from ..common import ApiError, audit, bad, json_body, log_rule, not_found, now, parse, require_staff, sha, unauthorized
+from ..common import ApiError, audit, bad, forbidden, json_body, log_rule, not_found, now, parse, require_staff, sha, unauthorized
 from ..domain import CITY_GEO, DEAL_TYPES, LISTING_STATUSES, SUPER_ROLES
 from ..services.listings import price_changed, run_matching
 from .access import set_listings
@@ -98,6 +98,13 @@ def sample_listing(n: str | None = None) -> CrmListing:
         'units': [{'ref': str(i + 1).zfill(2), 'areaM2': 77, 'rentMonthly': 1357, 'rentType': 'social' if i < 3 else 'mid' if i < 11 else 'free'} for i in range(14)]})
 
 
+def require_developer(request: Request) -> dict:
+    """API keys and the CRM integration are technical settings: developer accounts only."""
+    u = require_staff(request)
+    if u['role'] != 'developer': raise forbidden('CRM & API settings are managed by a developer account.')
+    return u
+
+
 def _key(request: Request) -> str:
     """API key from `x-api-key` or `Authorization: Bearer`. Keys are stored hashed; PP_CRM_API_KEY works as a bootstrap key."""
     raw = (request.headers.get('x-api-key') or re.sub(r'^Bearer\s+', '', request.headers.get('authorization') or '', flags=re.I) or '').strip()
@@ -133,7 +140,7 @@ def withdraw(request: Request, external_id: str):
 # ---------- Admin / developer console ----------
 @router.get('/admin/integrations')
 def console(request: Request):
-    require_staff(request, SUPER_ROLES)
+    require_developer(request)
     keys = db.all_(T.api_keys, order=desc(T.api_keys.c.created_at))
     log = db.all_(T.automation_log, T.automation_log.c.rule == 'crm', order=desc(T.automation_log.c.created_at), limit=25)
     crm = db.one(select(func.count().label('n'), func.max(T.listings.c.synced_at).label('last')).where(T.listings.c.source == 'crm'))
@@ -147,7 +154,7 @@ class KeyIn(BaseModel):
 
 @post('/admin/integrations/keys')
 def create_key(request: Request, body=Depends(json_body)):
-    u = require_staff(request, SUPER_ROLES); b = parse(KeyIn, body)
+    u = require_developer(request); b = parse(KeyIn, body)
     raw = 'pp_live_' + base64.urlsafe_b64encode(os.urandom(24)).decode().rstrip('='); prefix = raw[:12]
     k = db.ins(T.api_keys, {'name': b.name, 'prefix': prefix, 'key_hash': sha(raw), 'created_by': u['id']})
     audit(request, 'api_key_created', 'api_key', k['id'], {'name': b.name, 'prefix': prefix})
@@ -156,11 +163,11 @@ def create_key(request: Request, body=Depends(json_body)):
 
 @post('/admin/integrations/keys/{id}/revoke')
 def revoke_key(request: Request, id: str):
-    require_staff(request, SUPER_ROLES); db.upd(T.api_keys, T.api_keys.c.id == id, {'revoked_at': now()}); audit(request, 'api_key_revoked', 'api_key', id); return {'ok': True}
+    require_developer(request); db.upd(T.api_keys, T.api_keys.c.id == id, {'revoked_at': now()}); audit(request, 'api_key_revoked', 'api_key', id); return {'ok': True}
 
 
 @post('/admin/integrations/crm/sample')
 def sample(request: Request):
     """Demo: run the same upsert the CRM would call, with a sample payload."""
-    u = require_staff(request, SUPER_ROLES); r = crm_upsert(sample_listing(), f"test by {u['name']}")
+    u = require_developer(request); r = crm_upsert(sample_listing(), f"test by {u['name']}")
     audit(request, 'crm_sample', 'listing', r['id']); return r

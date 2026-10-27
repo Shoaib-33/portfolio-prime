@@ -191,7 +191,7 @@ def ask(request: Request, slug: str, body=Depends(json_body)):
 # ---------- Staff: processes and Q&A ----------
 @router.get('/admin/processes')
 def admin_processes(request: Request):
-    u = require_staff(request, ['admin', 'sales', 'compliance', 'readonly']); see = u['role'] in ('admin', 'sales', 'developer'); out = []
+    u = require_staff(request); see = True; out = []
     for pr in db.all_(T.sale_processes):
         l = db.get(T.listings, id=pr['listing_id'])
         bids = db.all_(T.offers, T.offers.c.listing_id == l['id'], T.offers.c.status.in_(['indicative', 'final']), order=desc(T.offers.c.amount))
@@ -205,7 +205,7 @@ def admin_processes(request: Request):
 
 @post('/admin/processes/{id}/advance')
 def advance(request: Request, id: str):
-    require_staff(request, ['admin', 'sales']); pr = db.get(T.sale_processes, id=id)
+    require_staff(request); pr = db.get(T.sale_processes, id=id)
     if not pr: raise not_found()
     if pr['stage'] >= len(pr['stages']) - 1: raise bad('The process is already at its last stage.')
     stage = pr['stage'] + 1; key = pr['stages'][stage]['key']; shortlist = pr['shortlist']; l = db.get(T.listings, id=pr['listing_id'])
@@ -226,7 +226,7 @@ class AnswerIn(BaseModel):
 
 @post('/admin/qa/{id}/answer')
 def answer(request: Request, id: str, body=Depends(json_body)):
-    u = require_staff(request, ['admin', 'sales']); b = parse(AnswerIn, body); q = db.get(T.qa_items, id=id)
+    u = require_staff(request); b = parse(AnswerIn, body); q = db.get(T.qa_items, id=id)
     if not q: raise not_found()
     db.upd(T.qa_items, T.qa_items.c.id == id, {'answer': b.answer, 'answered_by': 'Capital Markets team', 'answered_at': now()})
     l = db.get(T.listings, id=q['listing_id'])

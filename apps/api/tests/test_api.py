@@ -30,8 +30,8 @@ def test_invited_person_sees_exactly_what_was_shared(client):
 
 
 def test_invitation_flow(client):
-    a, sales = client('admin@demo.nl'), client('sales@demo.nl'); ov = a.get('/admin/access').json(); id_ = ids_by_slug(ov)
-    assert sales.get('/admin/access').status_code == 403, 'only admin and developer manage access'
+    a = client('admin@demo.nl'); ov = a.get('/admin/access').json(); id_ = ids_by_slug(ov)
+    assert client('verified@demo.nl').get('/admin/access').status_code == 403, 'only admin and developer manage access'
     assert a.post('/admin/access/invites', json={'name': 'X', 'email': 'nope'}).status_code == 400
     inv = a.post('/admin/access/invites', json={'name': 'Bea Buyer', 'email': 'bea@example.com', 'companyName': 'Bea Capital BV', 'investorType': 'Private BV', 'listingIds': [id_('utrecht-oost'), id_('den-haag-building')], 'features': ['messages', 'analysis']})
     assert inv.status_code == 201 and inv.json()['path'].startswith('/invite/'); token = inv.json()['path'].split('/')[-1]
@@ -75,7 +75,7 @@ def test_offers_deals_and_bid_rounds(client):
     c = client('verified@demo.nl')
     o = c.post('/listings/utrecht-oost/offers', data={'amount': '3100000', 'transferDate': '2030-01-15', 'financingType': 'Mortgage', 'conditions': 'Financing'}, files={'proof': PDF})
     assert o.status_code == 201 and o.json()['lead']['band'] == 'Hot'
-    staff = client('sales@demo.nl')
+    staff = client('admin@demo.nl')
     assert staff.post(f"/admin/offers/{o.json()['id']}/decision", json={'decision': 'accepted'}).status_code == 201
     assert staff.post(f"/admin/offers/{o.json()['id']}/decision", json={'decision': 'rejected'}).status_code == 400, 'cannot decide twice'
     dash = c.get('/me/dashboard').json(); assert len(dash['deals']) == 1 and dash['deals'][0]['stage'] == 0
@@ -87,12 +87,21 @@ def test_offers_deals_and_bid_rounds(client):
     assert staff.post(f"/admin/bid-rounds/{rnd['id']}/award").json()['amount'] == 7500000
 
 
-def test_roles(client):
-    assert client('sales@demo.nl').get('/admin/kyc').status_code == 403
-    comp = client('compliance@demo.nl'); high = next(k for k in comp.get('/admin/kyc').json() if k['risk'] == 'high')
-    assert comp.post(f"/admin/kyc/{high['id']}/decision", json={'decision': 'approved'}).status_code == 400
-    assert comp.post(f"/admin/kyc/{high['id']}/decision", json={'decision': 'approved', 'notes': 'EDD: source of funds verified'}).status_code == 201
-    assert comp.put('/admin/config', json={'buyer_fee': 1}).status_code == 403, 'only admin edits config'
+def test_three_kinds_of_user(client):
+    a, dev = client('admin@demo.nl'), client('developer@demo.nl')
+    assert a.post('/admin/access/invites', json={'name': 'New Admin', 'email': 'admin2@example.com', 'role': 'admin'}).status_code == 403, 'admins invite investors only'
+    assert a.post('/admin/access/invites', json={'name': 'New Dev', 'email': 'dev2@example.com', 'role': 'developer'}).status_code == 403
+    assert a.post('/admin/access/invites', json={'name': 'Bad Role', 'email': 'sales2@example.com', 'role': 'sales'}).status_code == 400, 'retired roles no longer exist'
+    assert dev.post('/admin/access/invites', json={'name': 'New Admin', 'email': 'admin2@example.com', 'role': 'admin'}).status_code == 201, 'a developer creates admins'
+    dev_id = next(u['id'] for u in a.get('/admin/access').json()['users'] if u['email'] == 'developer@demo.nl')
+    assert a.post(f'/admin/access/users/{dev_id}/status', json={'status': 'suspended'}).status_code == 403, 'an admin cannot pause a developer'
+    assert a.get('/admin/integrations').status_code == 403 and dev.get('/admin/integrations').status_code == 200, 'CRM & API is developer-only'
+    assert client().post('/auth/login', json={'email': 'sales@demo.nl', 'password': 'Demo2026!'}).status_code == 401, 'earlier staff accounts are deactivated'
+    assert client('verified@demo.nl').get('/admin/kyc').status_code == 403
+    high = next(k for k in a.get('/admin/kyc').json() if k['risk'] == 'high')
+    assert a.post(f"/admin/kyc/{high['id']}/decision", json={'decision': 'approved'}).status_code == 400, 'high risk needs notes'
+    assert a.post(f"/admin/kyc/{high['id']}/decision", json={'decision': 'approved', 'notes': 'EDD: source of funds verified'}).status_code == 201
+    assert client('free@demo.nl').put('/admin/config', json={'buyer_fee': 1}).status_code == 403
 
 
 def test_staff_2fa_and_price_drop_alerts(client):
@@ -110,7 +119,7 @@ def test_kyc_submission(client):
     k = c.post('/kyc/cases', data={'liveness': 'on', 'ticket': '1000000', 'pep': 'no'}, files={'idDoc': ('id.pdf', b'%PDF-1.4 x', 'application/pdf'), 'proof': PDF})
     assert k.status_code == 201 and k.json()['risk'] == 'low'
     assert c.post('/kyc/cases', data={'liveness': 'on', 'ticket': '1', 'pep': 'no'}, files={'idDoc': ('x.txt', b'x', 'text/plain'), 'proof': PDF}).status_code == 400
-    client('compliance@demo.nl').post(f"/admin/kyc/{k.json()['id']}/decision", json={'decision': 'approved'})
+    client('admin@demo.nl').post(f"/admin/kyc/{k.json()['id']}/decision", json={'decision': 'approved'})
     assert c.get('/me').json()['user']['verified'] is True
 
 
@@ -128,14 +137,12 @@ def test_messaging(client):
     inv = client('free@demo.nl')
     assert client().post('/messages', json={'listing': 'utrecht-oost', 'body': 'Hello'}).status_code == 401
     assert inv.post('/messages', json={'listing': 'utrecht-oost', 'body': 'Is the roof recently renewed?'}).status_code == 201
-    sales = client('sales@demo.nl'); t = next(x for x in sales.get('/admin/messages').json()['threads'] if x['slug'] == 'utrecht-oost' and x['investorEmail'] == 'free@demo.nl'); assert t['unreadForStaff'] == 1
+    sales = client('admin@demo.nl'); t = next(x for x in sales.get('/admin/messages').json()['threads'] if x['slug'] == 'utrecht-oost' and x['investorEmail'] == 'free@demo.nl'); assert t['unreadForStaff'] == 1
     assert sales.post('/admin/messages', json={'investorId': t['investorId'], 'listing': 'utrecht-oost', 'body': 'Yes, in 2021. The inspection report is in the data room.'}).status_code == 201
     assert next(x for x in inv.get('/messages').json()['threads'] if x['slug'] == 'utrecht-oost')['unreadForInvestor'] == 1
     th = inv.get('/messages/thread?listing=utrecht-oost').json(); assert len(th['messages']) == 2 and th['messages'][1]['fromStaff'] is True
     assert next(x for x in inv.get('/messages').json()['threads'] if x['slug'] == 'utrecht-oost')['unreadForInvestor'] == 0, 'opening the thread marks it read'
     assert not any(x['slug'] == 'utrecht-oost' for x in client('pro@demo.nl').get('/messages').json()['threads']), 'threads are private'
-    comp = client('compliance@demo.nl'); assert comp.get('/admin/messages').status_code == 200
-    assert comp.post('/admin/messages', json={'investorId': t['investorId'], 'listing': 'utrecht-oost', 'body': 'Hi'}).status_code == 403
     assert inv.get('/admin/messages').status_code == 403
 
 
@@ -154,13 +161,12 @@ def test_private_deal_rooms(client):
     assert bid(round(d['askingPrice'] * 0.99)).status_code == 201
     assert fund.post('/listings/project-tulip/qa', json={'category': 'Tax', 'question': 'Is the SPV part of a fiscal unity today?'}).status_code == 201
     assert fund.post('/listings/project-tulip/offers', data={}).status_code == 400, 'no ordinary offers on a process deal'
-    sales = client('sales@demo.nl'); tp = next(p for p in sales.get('/admin/processes').json() if p['slug'] == 'project-tulip')
+    sales = client('admin@demo.nl'); tp = next(p for p in sales.get('/admin/processes').json() if p['slug'] == 'project-tulip')
     assert len(tp['bids']) == 3 and len(tp['openQuestions']) >= 2
     q = next(q for q in tp['openQuestions'] if 'fiscal unity' in q['question'])
     assert sales.post(f"/admin/qa/{q['id']}/answer", json={'answer': 'Yes; it ends at closing.'}).status_code == 201
     assert sales.post(f"/admin/processes/{tp['id']}/advance", json={}).json()['shortlist'] == 3
     assert fund.get('/listings/project-tulip/process').json()['shortlisted'] is True
-    assert next(p for p in client('compliance@demo.nl').get('/admin/processes').json() if p['slug'] == 'project-tulip')['bids'][0]['amount'] is None, 'compliance does not see bid amounts'
 
 
 def test_analysis_memo_and_ai(client):
@@ -197,5 +203,18 @@ def test_crm_integration(client):
     free = client('free@demo.nl'); l = free.get(f"/listings/{r['slug']}").json(); assert l['askingPrice'] == 4990000 and l['unitsCount'] == 2
     assert client('verified@demo.nl').get(f"/listings/{r['slug']}").status_code == 404, 'not shared with everyone'
     assert crm('DELETE', '/integrations/crm/listings/CRM-777').status_code == 200 and free.get(f"/listings/{r['slug']}").status_code == 404, 'withdrawn'
-    assert client('sales@demo.nl').get('/admin/integrations').status_code == 403
+    assert client('admin@demo.nl').get('/admin/integrations').status_code == 403
     assert any('CRM-777' in x['text'] for x in dev.get('/admin/integrations').json()['log'])
+
+
+def test_retired_staff_roles_are_deactivated_on_upgrade(client):
+    """Databases from before the three-role model (like the live one) still have sales/compliance accounts."""
+    from app import db
+    from app.db import T
+    from app.common import hash_password
+    from app.seed import seed_access
+    db.ins(T.users, {'email': 'oldsales@demo.nl', 'name': 'Old Sales', 'password_hash': hash_password('Demo2026!'), 'role': 'sales'}, returning=False)
+    assert client().post('/auth/login', json={'email': 'oldsales@demo.nl', 'password': 'Demo2026!'}).status_code == 201, 'before the upgrade'
+    seed_access()
+    assert client().post('/auth/login', json={'email': 'oldsales@demo.nl', 'password': 'Demo2026!'}).status_code == 401, 'deactivated after the upgrade'
+    assert all(u['email'] != 'oldsales@demo.nl' for u in client('admin@demo.nl').get('/admin/access').json()['users'])

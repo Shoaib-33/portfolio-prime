@@ -7,8 +7,11 @@ from typing import Any, Optional
 # A viewer is a plain dict: id, role, verified, pro, twofaEnabled, investorType, listingScope, listingIds, features
 Viewer = Optional[dict]
 
-STAFF_ROLES = ['admin', 'developer', 'acquisition', 'sales', 'compliance', 'editor', 'readonly']
-SUPER_ROLES = ['admin', 'developer']  # every right; the other staff roles are limited to their area
+# Three kinds of user: developer (everything, incl. integrations and creating admins), admin (runs the business and invites
+# investors) and investor (invited; sees only what an admin shared).
+STAFF_ROLES = ['admin', 'developer']
+SUPER_ROLES = STAFF_ROLES
+RETIRED_ROLES = ['acquisition', 'sales', 'compliance', 'editor', 'readonly']  # earlier staff roles; such accounts are deactivated
 
 
 def is_staff(v: Viewer) -> bool:

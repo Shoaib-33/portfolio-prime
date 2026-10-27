@@ -11,7 +11,6 @@ from ..domain import can_see_listing, is_staff
 
 router = APIRouter()
 def post(path): return router.post(path, status_code=201)
-READERS = ['admin', 'sales', 'compliance', 'readonly']
 
 
 def _listing(slug: str | None, request: Request | None = None):
@@ -64,7 +63,7 @@ def mine(request: Request):
 def my_thread(request: Request, listing: str = 'general'):
     u = require_feature(request, 'messages'); l = _listing(listing, request); lid = l['id'] if l else None
     db.upd(T.messages, and_(_thread(u['id'], lid), T.messages.c.from_staff.is_(True), T.messages.c.read_at.is_(None)), {'read_at': now()})
-    return {'listing': _info(l), 'accountManager': u['accountManager'] or 'Sanne de Wit', 'messages': _conversation(u['id'], lid)}
+    return {'listing': _info(l), 'accountManager': u['accountManager'] or 'Portfolio & Prime', 'messages': _conversation(u['id'], lid)}
 
 
 class SendIn(BaseModel):
@@ -84,22 +83,22 @@ def send(request: Request, body=Depends(json_body)):
 # ---------- Staff: sales and admin reply; compliance and read-only can read ----------
 @router.get('/admin/messages')
 def all_threads(request: Request):
-    require_staff(request, READERS); th = _threads()
+    require_staff(request); th = _threads()
     return {'threads': th, 'unread': sum(t['unreadForStaff'] for t in th)}
 
 
 @router.get('/admin/messages/thread')
 def staff_thread(request: Request, investor: str = '', listing: str = 'general'):
-    s = require_staff(request, READERS)
+    s = require_staff(request)
     import uuid
     try: uuid.UUID(investor)
     except ValueError: raise bad('investor: Invalid UUID')
     inv = db.get(T.users, id=investor)
     if not inv: raise not_found('Investor not found')
     l = _listing(listing); lid = l['id'] if l else None
-    if s['role'] in ('admin', 'sales'): db.upd(T.messages, and_(_thread(inv['id'], lid), T.messages.c.from_staff.is_(False), T.messages.c.read_at.is_(None)), {'read_at': now()})
+    db.upd(T.messages, and_(_thread(inv['id'], lid), T.messages.c.from_staff.is_(False), T.messages.c.read_at.is_(None)), {'read_at': now()})
     return {'investor': {'id': inv['id'], 'name': inv['name'], 'email': inv['email'], 'companyName': inv['company_name'], 'verified': inv['verified'], 'pro': inv['pro']}, 'listing': _info(l),
-            'canReply': s['role'] in ('admin', 'sales', 'developer'), 'messages': _conversation(inv['id'], lid)}
+            'canReply': True, 'messages': _conversation(inv['id'], lid)}
 
 
 class ReplyIn(BaseModel):
@@ -110,7 +109,7 @@ class ReplyIn(BaseModel):
 
 @post('/admin/messages')
 def reply(request: Request, body=Depends(json_body)):
-    s = require_staff(request, ['admin', 'sales']); b = parse(ReplyIn, body)
+    s = require_staff(request); b = parse(ReplyIn, body)
     inv = db.get(T.users, id=b.investorId)
     if not inv or is_staff(inv): raise not_found('Investor not found')
     l = _listing(b.listing); lid = l['id'] if l else None

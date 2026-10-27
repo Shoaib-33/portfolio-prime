@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from .. import db
 from ..db import T, and_, desc, func, select
-from ..common import (ApiError, audit, bad, conflict, create_session, draft_email, hash_password, json_body, log_rule, not_found, notify, now, parse, parse_value,
+from ..common import (ApiError, audit, bad, conflict, forbidden, create_session, draft_email, hash_password, json_body, log_rule, not_found, notify, now, parse, parse_value,
                       require_staff, set_session_cookie, sha, client_ip)
 from ..domain import FEATURE_KEYS, FEATURE_PRESETS, FEATURES, SUPER_ROLES, TIER_LABEL, features_of, is_staff, tier_of
 from .account import public_user
@@ -17,7 +17,7 @@ from .account import public_user
 router = APIRouter()
 def post(path): return router.post(path, status_code=201)
 
-ROLE_LABEL = {'investor': 'Investor', 'admin': 'Admin', 'developer': 'Developer', 'sales': 'Sales', 'compliance': 'Compliance', 'acquisition': 'Acquisition', 'editor': 'Editor', 'readonly': 'Read-only staff'}
+ROLE_LABEL = {'investor': 'Investor', 'admin': 'Admin', 'developer': 'Developer'}
 INVESTOR_TYPES = ('Private person', 'Private BV', 'Fund', 'Family office', 'Pension fund', 'Insurer', 'Institutional investor', 'Developer')
 Email = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, max_length=160, pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$')]
 Uuid = Annotated[str, StringConstraints(pattern=r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]
@@ -59,6 +59,13 @@ def set_listings(user_id: str, listing_ids: list[str], granted_by: str | None) -
 def _admin(request: Request): return require_staff(request, SUPER_ROLES)
 
 
+def _check_rights(me: dict, current_role: str | None, new_role: str | None):
+    """Admins invite and manage investors; only a developer creates or changes admin and developer accounts."""
+    if me['role'] == 'developer': return
+    if (current_role and current_role != 'investor') or (new_role and new_role != 'investor'):
+        raise forbidden('Only a developer can create or change admin and developer accounts. Admins invite investors.')
+
+
 Feature = Literal[tuple(FEATURE_KEYS)]  # type: ignore
 
 
@@ -71,7 +78,7 @@ class AccessIn(BaseModel):
 # ---------- Admin: people and their access ----------
 @router.get('/admin/access')
 def overview(request: Request):
-    _admin(request)
+    me = _admin(request)
     users = [u for u in db.all_(T.users, order=desc(T.users.c.created_at)) if not u['deleted_at']]
     A = T.listing_access.c
     count = {r['user_id']: int(r['n']) for r in db.rows(select(A.user_id, func.count().label('n')).group_by(A.user_id))}
@@ -91,7 +98,7 @@ def overview(request: Request):
     return {'users': out_users,
             'listings': [{'id': l['id'], 'slug': l['slug'], 'name': l['name'], 'city': l['_city'], 'district': l['_district'], 'image': l['_image'], 'dealType': l['deal_type'], 'status': l['status'], 'askingPrice': l['asking_price'],
                           'units': un.get(l['_pid'], 1), 'propertyType': l['_ptype'], 'source': l['source'], 'sharedWith': shares.get(l['id'], 0)} for l in ls if l['status'] != 'withdrawn'],
-            'features': FEATURES, 'presets': FEATURE_PRESETS, 'roles': [{'key': k, 'label': v, 'staff': k != 'investor'} for k, v in ROLE_LABEL.items()], 'investorTypes': list(INVESTOR_TYPES),
+            'features': FEATURES, 'presets': FEATURE_PRESETS, 'roles': [{'key': k, 'label': v, 'staff': k != 'investor', 'assignable': me['role'] == 'developer' or k == 'investor'} for k, v in ROLE_LABEL.items()], 'me': {'role': me['role']}, 'investorTypes': list(INVESTOR_TYPES),
             'requests': [{'id': r['id'], 'name': r['name'], 'email': r['email'], 'message': r['message'], 'status': r['status'], 'createdAt': r['created_at'], 'invited': r['email'].lower() in emails} for r in reqs]}
 
 
@@ -119,6 +126,7 @@ def update(request: Request, id: str, body=Depends(json_body)):
     u = db.get(T.users, id=id)
     if not u or u['deleted_at']: raise not_found('Person not found')
     if b.role and b.role != u['role'] and u['id'] == me['id']: raise bad('You cannot change your own role.')
+    _check_rights(me, u['role'], b.role)
     known = {r['id'] for r in db.rows(select(T.listings.c.id))}; ids = [x for x in b.listingIds if x in known]
     vals = {'listing_scope': b.listingScope, 'features': list(b.features), 'access_updated_at': now()}
     if b.role: vals['role'] = b.role
@@ -148,11 +156,11 @@ class InviteIn(AccessIn):
 
 @post('/admin/access/invites')
 def invite(request: Request, body=Depends(json_body)):
-    me = _admin(request); b = parse(InviteIn, body)
+    me = _admin(request); b = parse(InviteIn, body); _check_rights(me, None, b.role)
     if db.get(T.users, email=b.email): raise conflict('Someone with this email already has an account. Edit their access instead.')
     u = db.ins(T.users, {'email': b.email, 'name': b.name, 'company_name': b.companyName or None, 'investor_type': b.investorType, 'country': b.country.upper(), 'role': b.role, 'status': 'invited',
                          'password_hash': 'invited$' + os.urandom(8).hex(), 'listing_scope': b.listingScope, 'features': list(b.features), 'invited_by': me['id'], 'access_updated_at': now(),
-                         'account_manager': b.accountManager or ('Sanne de Wit' if b.role == 'investor' else None)})
+                         'account_manager': b.accountManager or (me['name'] if b.role == 'investor' else None)})
     known = {r['id'] for r in db.rows(select(T.listings.c.id))}; set_listings(u['id'], [x for x in b.listingIds if x in known], me['id'])
     inv = new_invite(u['id'], me['id'], b.expiresDays, b.message)
     draft_email(u['email'], 'Your private invitation to Portfolio & Prime', f"Dear {u['name']}, {me['name']} invited you to Portfolio & Prime{f': “{b.message}”' if b.message else '.'} Open your personal link to set a password: {inv['path']} (valid until {inv['expiresAt'].strftime('%Y-%m-%d')}).", 'invite')
@@ -169,6 +177,7 @@ class RelinkIn(BaseModel):
 def relink(request: Request, id: str, body=Depends(json_body)):
     me = _admin(request); b = parse(RelinkIn, body or {}); u = db.get(T.users, id=id) if parse_value(Uuid, id, 'id') else None
     if not u or u['deleted_at']: raise not_found('Person not found')
+    _check_rights(me, u['role'], None)
     if u['status'] != 'invited': raise bad('This person has already activated their account.')
     inv = new_invite(u['id'], me['id'], b.expiresDays); audit(request, 'invite_link', 'user', u['id'])
     return {'path': inv['path'], 'expiresAt': inv['expiresAt']}
@@ -176,7 +185,8 @@ def relink(request: Request, id: str, body=Depends(json_body)):
 
 @post('/admin/access/users/{id}/revoke-invite')
 def revoke(request: Request, id: str):
-    _admin(request); parse_value(Uuid, id, 'id'); I = T.invites.c
+    me = _admin(request); parse_value(Uuid, id, 'id'); I = T.invites.c
+    t = db.get(T.users, id=id); _check_rights(me, t['role'] if t else None, None)
     db.upd(T.invites, and_(I.user_id == id, I.used_at.is_(None), I.revoked_at.is_(None)), {'revoked_at': now()})
     audit(request, 'invite_revoked', 'user', id); return {'ok': True}
 
@@ -191,6 +201,7 @@ def status(request: Request, id: str, body=Depends(json_body)):
     if id == me['id']: raise bad('You cannot pause your own access.')
     u = db.get(T.users, id=id) if parse_value(Uuid, id, 'id') else None
     if not u or u['deleted_at']: raise not_found('Person not found')
+    _check_rights(me, u['role'], None)
     if u['status'] == 'invited': raise bad('This person has not activated their invitation yet. Revoke the link instead.')
     db.upd(T.users, T.users.c.id == id, {'status': b.status})
     if b.status == 'suspended': db.run(T.sessions.delete().where(T.sessions.c.user_id == id))  # signed out everywhere, immediately
