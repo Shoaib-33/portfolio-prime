@@ -11,3 +11,5 @@ export const scoreColor = (t: number) => (t >= 75 ? '#3f7a5c' : t >= 60 ? '#b685
 export const PROVINCES = ['Drenthe', 'Flevoland', 'Friesland', 'Gelderland', 'Groningen', 'Limburg', 'Noord-Brabant', 'Noord-Holland', 'Overijssel', 'Utrecht', 'Zeeland', 'Zuid-Holland'];
 /** Listing -> map point. The API decides how exact the point is (city centre for visitors). */
 export const toPoint = (l: any) => l.point ? { slug: l.slug, name: l.name, city: l.city, district: l.district, price: l.askingPrice ? money(l.askingPrice) : l.priceDisplay || 'Price on request', bar: l.bar, image: l.image, lat: l.point.lat, lng: l.point.lng, approx: !!l.point.approx } : null;
+/** Listing image: a CRM photo URL (https) or one of the bundled reference images. */
+export const imgSrc = (image?: string | null) => !image ? '/img/p1.jpg' : /^https:\/\//.test(image) ? image : `/img/${image}.jpg`;

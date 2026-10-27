@@ -5,10 +5,10 @@ import { resolve, extname } from 'path';
 import { eq, and, gt } from 'drizzle-orm';
 import type { Request } from 'express';
 import { DB, schema, DATA_DIR } from './db/client';
-import { ConfigMap, Viewer, tierOf, canDetails, offMarketState, priceBand, figures, dealScore, isStaff, STAFF_ROLES, CITY_GEO, provinceOf } from './domain';
+import { ConfigMap, Viewer, tierOf, canDetails, offMarketState, priceBand, figures, dealScore, isStaff, isSuper, hasFeature, FEATURES, STAFF_ROLES, CITY_GEO, provinceOf } from './domain';
 const S = schema;
 
-export type ReqUser = typeof S.users.$inferSelect & { sessionId: string; twofaPassed: boolean };
+export type ReqUser = typeof S.users.$inferSelect & { sessionId: string; twofaPassed: boolean; listingIds: string[] };
 export type Req = Request & { user?: ReqUser | null };
 
 /* ---------- Secrets ---------- */
@@ -28,8 +28,9 @@ export async function createSession(db: DB, userId: string, twofaPassed: boolean
 export async function loadSession(db: DB, token?: string): Promise<ReqUser | null> {
   if (!token) return null;
   const rows = await db.select().from(S.sessions).innerJoin(S.users, eq(S.sessions.userId, S.users.id)).where(and(eq(S.sessions.id, sha(token)), gt(S.sessions.expiresAt, new Date()))).limit(1);
-  if (!rows.length || rows[0].users.deletedAt) return null;
-  return { ...rows[0].users, sessionId: rows[0].sessions.id, twofaPassed: rows[0].sessions.twofaPassed };
+  if (!rows.length || rows[0].users.deletedAt || rows[0].users.status !== 'active') return null;
+  const u = rows[0].users; const listingIds = isStaff(u) || u.listingScope === 'all' ? [] : (await db.select({ id: S.listingAccess.listingId }).from(S.listingAccess).where(eq(S.listingAccess.userId, u.id))).map(r => r.id);
+  return { ...u, sessionId: rows[0].sessions.id, twofaPassed: rows[0].sessions.twofaPassed, listingIds };
 }
 export const cookieOpts = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.RENDER === 'true' || process.env.PP_SECURE_COOKIE === '1', path: '/', maxAge: 14 * 864e5 };
 
@@ -37,11 +38,17 @@ export function requireUser(req: Req): ReqUser { if (!req.user) throw new Unauth
 export function requireStaff(req: Req, roles: string[] = STAFF_ROLES): ReqUser {
   const u = requireUser(req);
   if (!isStaff(u)) throw new ForbiddenException('Staff only.');
-  if (u.role !== 'admin' && !roles.includes(u.role)) throw new ForbiddenException(`Your role (${u.role}) cannot do this.`);
+  if (!isSuper(u) && !roles.includes(u.role)) throw new ForbiddenException(`Your role (${u.role}) cannot do this.`);
   if (!u.twofaPassed) throw new ForbiddenException('Staff accounts need two-factor login.');
   return u;
 }
-export const viewerOf = (req: Req): Viewer | null => req.user ? { id: req.user.id, role: req.user.role, verified: req.user.verified, pro: req.user.pro, twofaEnabled: req.user.twofaEnabled, investorType: req.user.investorType } : null;
+export const viewerOf = (req: Req): Viewer | null => req.user ? { id: req.user.id, role: req.user.role, verified: req.user.verified, pro: req.user.pro, twofaEnabled: req.user.twofaEnabled, investorType: req.user.investorType, listingScope: req.user.listingScope, listingIds: req.user.listingIds, features: req.user.features } : null;
+/** Feature switch set by an admin per person. Checked on the server for every gated endpoint. */
+export function requireFeature(req: Req, key: string): ReqUser {
+  const u = requireUser(req);
+  if (!hasFeature(viewerOf(req), key)) throw new ForbiddenException(`${FEATURES.find(f => f.key === key)?.label || 'This feature'} is not included in your access. Ask your account manager.`);
+  return u;
+}
 
 /* ---------- Signed, expiring links (plan: 5-minute signed URLs) ---------- */
 export function signToken(payload: Record<string, unknown>, ttlSec = 300) { const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + ttlSec * 1000 })).toString('base64url'); return body + '.' + createHmac('sha256', key()).update(body).digest('base64url'); }

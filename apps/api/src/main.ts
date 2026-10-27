@@ -4,10 +4,10 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { getDb } from './db/client';
 import { loadSession, SESSION_COOKIE, Req } from './common';
-import { seedIfEmpty, seedMessages, seedInstitutional } from './seed/seed';
+import { seedIfEmpty, seedMessages, seedInstitutional, seedAccess } from './seed/seed';
 
 export async function createApp() {
-  const db = await getDb(); await seedIfEmpty(db); await seedMessages(db); await seedInstitutional(db);
+  const db = await getDb(); await seedIfEmpty(db); await seedMessages(db); await seedInstitutional(db); await seedAccess(db);
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
   app.setGlobalPrefix('api');
   app.use(cookieParser());

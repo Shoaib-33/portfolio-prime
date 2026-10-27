@@ -70,3 +70,12 @@ test('TOTP: RFC 6238 test vector and ±1 step window', () => {
   const rfc = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; assert.equal(totp(rfc, 59000), '287082'); assert.equal(totp(rfc, 1111111109000), '081804');
   const s = newTotpSecret(), now = Date.now(); assert.equal(verifyTotp(s, totp(s, now - 30000), now), true); assert.equal(verifyTotp(s, totp(s, now - 120000), now), false);
 });
+
+test('invite-only access: visitors see nothing, staff everything, people only what was shared', () => {
+  const { canSeeListing, hasFeature, featuresOf, FEATURE_KEYS } = require('../domain');
+  assert.equal(canSeeListing(null, 'L1'), false); assert.equal(canSeeListing({ id: 'a', role: 'admin' }, 'L1'), true); assert.equal(canSeeListing({ id: 'd', role: 'developer' }, 'L1'), true);
+  const inv = { id: 'u', role: 'investor', listingScope: 'selected', listingIds: ['L1', 'L2', 'L3'], features: ['map'] };
+  assert.equal(canSeeListing(inv, 'L2'), true); assert.equal(canSeeListing(inv, 'L4'), false); assert.equal(canSeeListing({ ...inv, listingScope: 'all' }, 'L4'), true);
+  assert.equal(hasFeature(inv, 'map'), true); assert.equal(hasFeature(inv, 'analyst'), false); assert.equal(hasFeature(null, 'map'), false); assert.equal(hasFeature({ id: 's', role: 'sales' }, 'analyst'), true);
+  assert.deepEqual(featuresOf({ ...inv, features: ['bogus', 'map'] }), ['map']); assert.deepEqual(featuresOf({ id: 'a', role: 'admin' }), FEATURE_KEYS);
+});

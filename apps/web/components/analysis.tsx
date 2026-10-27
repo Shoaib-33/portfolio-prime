@@ -10,7 +10,7 @@ const LEVEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Lo
 
 export async function AnalysisTab({ l, me }: { l: any; me: Me }) {
   const u = me.user;
-  if (!l.full) return <div className="access-gate"><Shield /><h2>The institutional analysis.</h2><p>Valuation and comparables, a 10-year DCF with stress tests, Dutch rent-regulation exposure, ESG and due-diligence flags. Join free to open it.</p><Link className="btn navy" href={`/register?next=/listings/${l.slug}?tab=analysis`}>Join free ↗</Link></div>;
+  if (!l.full) return <div className="access-gate"><Shield /><h2>The institutional analysis.</h2><p>Valuation and comparables, a 10-year DCF with stress tests, Dutch rent-regulation exposure, ESG and due-diligence flags. Join free to open it.</p><Link className="btn navy" href={`/login?next=/listings/${l.slug}?tab=analysis`}>Join free ↗</Link></div>;
   const r = await api(`/listings/${l.slug}/analysis`); if (!r.ok) return <p className="form-error">{r.data?.message}</p>;
   const a = r.data; const v = a.valuation; const L = a.listing;
   const lo = Math.min(v.low, L.askingPrice) * 0.97, hi = Math.max(v.high, L.askingPrice) * 1.03; const at = (x: number) => ((x - lo) / (hi - lo) * 100) + '%';

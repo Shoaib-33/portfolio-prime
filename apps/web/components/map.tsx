@@ -26,7 +26,7 @@ export function ListingsMap({ points, height = 520, detail = false }: { points: 
       const popup = new maplibregl.Popup({ closeButton: true, offset: 18, maxWidth: '280px' });
       const card = (p: MapPoint) => {
         const a = el('a', 'map-card') as HTMLAnchorElement; a.href = `/listings/${p.slug}`;
-        const img = el('img', '') as HTMLImageElement; img.src = `/img/${p.image}.jpg`; img.alt = ''; a.append(img);
+        const img = el('img', '') as HTMLImageElement; img.src = String(p.image).startsWith("https://") ? p.image : `/img/${p.image}.jpg`; img.alt = ''; a.append(img);
         const body = el('span', 'map-card-body'); body.append(el('small', '', `${p.city}${p.district ? ' / ' + p.district : ''}`), el('b', '', p.name), el('span', '', p.price + (p.bar ? ` · BAR ${p.bar.toFixed(1)}%` : '')));
         if (p.approx) body.append(el('em', '', 'Approximate area · exact address for members'));
         a.append(body); return a;

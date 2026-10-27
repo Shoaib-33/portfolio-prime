@@ -1,13 +1,48 @@
 /* Pure business rules. No database access here, so they are easy to test (plan: 100% branch coverage on calculators and access rules). */
 export type Tier = 'visitor' | 'free' | 'verified' | 'pro';
-export interface Viewer { id?: string; role?: string; verified?: boolean; pro?: boolean; twofaEnabled?: boolean; investorType?: string }
-export const STAFF_ROLES = ['admin', 'acquisition', 'sales', 'compliance', 'editor', 'readonly'];
+export interface Viewer { id?: string; role?: string; verified?: boolean; pro?: boolean; twofaEnabled?: boolean; investorType?: string; listingScope?: string; listingIds?: string[]; features?: string[] }
+export const STAFF_ROLES = ['admin', 'developer', 'acquisition', 'sales', 'compliance', 'editor', 'readonly'];
+/** Admin and developer have every right; the other staff roles are limited to their area. */
+export const SUPER_ROLES = ['admin', 'developer'];
 export const isStaff = (v?: Viewer | null) => !!v && STAFF_ROLES.includes(v.role || '');
 export function tierOf(v?: Viewer | null): Tier { if (!v?.id) return 'visitor'; if (v.pro && v.verified) return 'pro'; if (v.verified) return 'verified'; return 'free'; }
 export const TIER_LABEL: Record<Tier, string> = { visitor: 'Visitor', free: 'Free member', verified: 'Verified investor', pro: 'Investor Pro' };
 export const alertFrequency = (v?: Viewer | null) => ({ visitor: null, free: 'weekly', verified: 'daily', pro: 'instant' } as const)[tierOf(v)];
 export const canDetails = (v?: Viewer | null) => tierOf(v) !== 'visitor' || isStaff(v);
 export const canOffer = (v?: Viewer | null) => !!v?.verified;
+
+/* ---------- Invite-only access ----------
+   Visitors see only the public company pages. An invited person sees the properties an admin shared with them
+   (or all, including future listings) and only the features switched on for them. Staff see everything. */
+export const FEATURES: { key: string; label: string; desc: string; group: string }[] = [
+  { key: 'map', label: 'Map view', desc: 'See shared properties on a map with exact pins.', group: 'Explore' },
+  { key: 'finder', label: 'Smart finder', desc: 'Match equity and financing to the shared properties.', group: 'Explore' },
+  { key: 'market', label: 'Market report', desc: 'Yields, prices and transactions per city.', group: 'Explore' },
+  { key: 'analysis', label: 'Analysis & IC memo', desc: 'Valuation, comparables, stress tests, ESG and the memo PDF.', group: 'Underwrite' },
+  { key: 'analyst', label: 'AI analyst', desc: 'Ask questions about a property; answers cite the data.', group: 'Underwrite' },
+  { key: 'dataroom', label: 'Data room', desc: 'NDA, documents and the unit-level rent roll (after KYC).', group: 'Underwrite' },
+  { key: 'institutional', label: 'Private deal rooms', desc: 'Structured sale process with Q&A for institutions.', group: 'Transact' },
+  { key: 'offers', label: 'Offers & bids', desc: 'Make offers, sealed bids and process bids (after KYC).', group: 'Transact' },
+  { key: 'messages', label: 'Messages', desc: 'Secure chat with the account manager.', group: 'Transact' },
+  { key: 'membership', label: 'Membership', desc: 'Investor Pro upgrade and off-market first look.', group: 'Account' },
+  { key: 'sell', label: 'Sell to us', desc: 'Offer a property or portfolio to our acquisition team.', group: 'Account' },
+];
+export const FEATURE_KEYS = FEATURES.map(f => f.key);
+export const FEATURE_PRESETS: { key: string; label: string; desc: string; features: string[] }[] = [
+  { key: 'viewer', label: 'Viewer', desc: 'Looks at the shared properties and asks questions.', features: ['map', 'messages'] },
+  { key: 'buyer', label: 'Buyer', desc: 'Underwrites, opens the data room and makes offers.', features: ['map', 'finder', 'analysis', 'analyst', 'dataroom', 'offers', 'messages'] },
+  { key: 'institution', label: 'Institution', desc: 'Private deal rooms, analysis, AI and bids.', features: ['map', 'market', 'analysis', 'analyst', 'dataroom', 'institutional', 'offers', 'messages'] },
+  { key: 'everything', label: 'Everything', desc: 'Every feature.', features: FEATURE_KEYS },
+];
+export const isSuper = (v?: Viewer | null) => !!v && SUPER_ROLES.includes(v.role || '');
+/** Can this person see this listing at all? Visitors never; staff always; invited people only what was shared. */
+export function canSeeListing(v: Viewer | null | undefined, listingId: string) {
+  if (!v?.id) return false; if (isStaff(v)) return true;
+  return v.listingScope === 'all' || !!v.listingIds?.includes(listingId);
+}
+export const hasFeature = (v: Viewer | null | undefined, key: string) => !!v?.id && (isStaff(v) || !!v.features?.includes(key));
+/** Features shown to this person (staff: all). */
+export const featuresOf = (v: Viewer | null | undefined) => (!v?.id ? [] : isStaff(v) ? FEATURE_KEYS : FEATURE_KEYS.filter(k => v.features?.includes(k)));
 
 /* Qualified (institutional) investors: verified funds, family offices, pension funds and insurers (KYB + proof of funds). */
 export const INSTITUTIONAL_TYPES = ['Fund', 'Family office', 'Pension fund', 'Insurer', 'Institutional investor'];

@@ -5,8 +5,8 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import { eq, and, desc, inArray, isNull, sql } from 'drizzle-orm';
 import { DB, schema as S } from '../db/client';
-import { Req as R, requireUser, requireStaff, viewerOf, audit, notify, draftEmail, getConfig, serializeListing } from '../common';
-import { isQualified, offMarketState, isStaff, cfg } from '../domain';
+import { Req as R, requireUser, requireStaff, requireFeature, viewerOf, audit, notify, draftEmail, getConfig, serializeListing } from '../common';
+import { isQualified, offMarketState, isStaff, canSeeListing, cfg } from '../domain';
 import { MARKET, MARKET_ASOF, COMPS, mandateFit, scenario, stressTests } from '../analytics';
 import { askAnalyst } from '../ai';
 import { memoPdf, watermark } from '../pdf';
@@ -26,22 +26,23 @@ export class InstitutionalController {
 
   /** Private deal rooms. Everyone sees the codename teaser and the process stage; details open to qualified investors. */
   @Get('institutional/deals') async deals(@Req() req: R) {
-    const v = viewerOf(req); const c = await getConfig(this.db);
+    requireFeature(req, 'institutional'); const v = viewerOf(req); const c = await getConfig(this.db);
     const rows = await this.db.select().from(S.listings).innerJoin(S.properties, eq(S.listings.propertyId, S.properties.id)).where(eq(S.listings.dealType, 'institutional')).orderBy(desc(S.listings.askingPrice));
     const counts = await unitCounts(this.db, rows.map(r => r.properties.id)); const out = [];
-    for (const { listings: l, properties: p } of rows) { if (['draft', 'withdrawn', 'sold'].includes(l.status)) continue; const pr = await this.process(l.id);
+    for (const { listings: l, properties: p } of rows) { if (['draft', 'withdrawn', 'sold'].includes(l.status) || !canSeeListing(v, l.id)) continue; const pr = await this.process(l.id);
       const parties = Number((await this.db.select({ n: sql<number>`count(*)::int` }).from(S.ndaSignatures).where(eq(S.ndaSignatures.listingId, l.id)))[0].n);
       out.push({ ...serializeListing(l, p, v, c), unitsCount: counts[p.id] || 1, process: pr ? this.summary(pr) : null, parties }); }
     return { qualified: isQualified(v), minTicket: cfg(c, 'institutional_min_ticket'), deals: out };
   }
 
   @Get('listings/:slug/analysis') async analysis(@Req() req: R, @Param('slug') slug: string) {
+    requireFeature(req, 'analysis');
     const r = await analysisPack(this.db, slug, viewerOf(req));
     if (r.status === 404) throw new NotFoundException('Listing not found'); if (r.status === 401) throw new HttpException(r.message, 401); if (r.status === 403) throw new ForbiddenException(r.message);
     return r.pack;
   }
   @Post('analysis/scenario') async scenarioRun(@Req() req: R, @Body() body: unknown) {
-    const b = parse(z.object({ slug: z.string(), interest: z.coerce.number().min(0).max(15).optional(), ltv: z.coerce.number().min(0).max(85).optional(), vacancy: z.coerce.number().min(0).max(50).optional(), rentGrowth: z.coerce.number().min(-5).max(10).optional(), exitYield: z.coerce.number().min(1).max(15).optional(), years: z.coerce.number().int().min(1).max(20).optional() }), body);
+    requireFeature(req, 'analysis'); const b = parse(z.object({ slug: z.string(), interest: z.coerce.number().min(0).max(15).optional(), ltv: z.coerce.number().min(0).max(85).optional(), vacancy: z.coerce.number().min(0).max(50).optional(), rentGrowth: z.coerce.number().min(-5).max(10).optional(), exitYield: z.coerce.number().min(1).max(15).optional(), years: z.coerce.number().int().min(1).max(20).optional() }), body);
     const r = await analysisPack(this.db, b.slug, viewerOf(req)); if (r.status !== 200) throw new HttpException((r as any).message || 'Not found', r.status);
     if (!r.pack.scenarioInputs.rent) throw new BadRequestException('This property has no rental income to model.');
     const { slug, ...o } = b; const inputs = { ...r.pack.scenarioInputs, ...Object.fromEntries(Object.entries(o).filter(([, x]) => x !== undefined)) };
@@ -50,7 +51,7 @@ export class InstitutionalController {
 
   /** Draft investment-committee memo as a watermarked PDF. Verified investors and staff. */
   @Get('listings/:slug/memo') async memo(@Req() req: R, @Res() res: Response, @Param('slug') slug: string) {
-    const u = requireUser(req); if (!u.verified && !isStaff(u)) throw new ForbiddenException('The memo generator is for verified investors.');
+    const u = requireFeature(req, 'analysis'); if (!u.verified && !isStaff(u)) throw new ForbiddenException('The memo generator is for verified investors.');
     const r = await analysisPack(this.db, slug, viewerOf(req)); if (r.status !== 200) throw new HttpException((r as any).message || 'Not found', r.status);
     const k = r.pack; const L = k.listing; const b = k.scenarioBase; const v = k.valuation; const pct = (n: number | null | undefined) => n === null || n === undefined ? '—' : n.toFixed(2) + '%';
     const sections = [
@@ -70,8 +71,8 @@ export class InstitutionalController {
 
   /* ---------- Structured sale process ---------- */
   private async procGate(req: R, slug: string) {
-    const u = requireUser(req); const v = viewerOf(req); if (!isQualified(v)) throw new ForbiddenException('Private deal rooms are open to verified institutional investors.');
-    const x = await getListing(this.db, slug); if (!x || x.l.dealType !== 'institutional' || offMarketState(x.l.dealType, null, v) !== 'open') throw new NotFoundException();
+    const u = requireFeature(req, 'institutional'); const v = viewerOf(req); if (!isQualified(v)) throw new ForbiddenException('Private deal rooms are open to verified institutional investors.');
+    const x = await getListing(this.db, slug); if (!x || !canSeeListing(v, x.l.id) || x.l.dealType !== 'institutional' || offMarketState(x.l.dealType, null, v) !== 'open') throw new NotFoundException();
     const pr = await this.process(x.l.id); if (!pr) throw new NotFoundException('No sale process for this listing.'); return { u, x, pr };
   }
   @Get('listings/:slug/process') async getProcess(@Req() req: R, @Param('slug') slug: string) {
@@ -84,7 +85,7 @@ export class InstitutionalController {
       qa: qa.filter(q => q.answer || q.userId === u.id || isStaff(u)).map(q => ({ id: q.id, category: q.category, question: q.question, answer: q.answer, answeredAt: q.answeredAt, at: q.createdAt, mine: q.userId === u.id })) };
   }
   @Post('listings/:slug/process/bids') async processBid(@Req() req: R, @Param('slug') slug: string, @Body() body: unknown) {
-    const { u, x, pr } = await this.procGate(req, slug); if (isStaff(u)) throw new ForbiddenException('Staff cannot bid.');
+    const { u, x, pr } = await this.procGate(req, slug); requireFeature(req, 'offers'); if (isStaff(u)) throw new ForbiddenException('Staff cannot bid.');
     if (!(await hasNda(this.db, u.id, x.l.id))) throw new ForbiddenException('Sign the NDA for this deal room first.');
     const key = pr.stages[pr.stage]?.key; if (key !== 'indicative' && key !== 'final') throw new BadRequestException(`Bids are not open in the current stage (${pr.stages[pr.stage]?.label}).`);
     if (key === 'final' && !pr.shortlist.includes(u.id)) throw new ForbiddenException('Final bids are open to shortlisted parties only.');
@@ -153,7 +154,7 @@ export class InstitutionalController {
 
   /* ---------- AI analyst ---------- */
   @Post('ai/ask') async ai(@Req() req: R, @Body() body: unknown) {
-    const u = requireUser(req); rateLimit(u.id);
+    const u = requireFeature(req, 'analyst'); rateLimit(u.id);
     const b = parse(z.object({ question: z.string().trim().min(3).max(1000), slug: z.string().max(80).optional(), history: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(4000) })).max(12).optional() }), body);
     const a = await askAnalyst(this.db, viewerOf(req), b); if ('error' in a) throw new HttpException(a.message, a.error);
     await this.db.insert(S.aiLogs).values({ userId: u.id, listingSlug: b.slug || null, question: b.question, mode: a.mode });
@@ -162,7 +163,8 @@ export class InstitutionalController {
   @Get('ai/status') status() { return { mode: process.env.ANTHROPIC_API_KEY ? 'claude' : 'engine', model: process.env.ANTHROPIC_API_KEY ? (process.env.PP_AI_MODEL || 'claude-opus-5-5') : null }; }
 
   /* ---------- Public market report (lead magnet; full PDF for members) ---------- */
-  @Get('market/report') async report() {
+  @Get('market/report') async report(@Req() req: R) {
+    requireFeature(req, 'market');
     const c = await getConfig(this.db);
     const live = await this.db.select({ n: sql<number>`count(*)::int`, v: sql<number>`coalesce(sum(asking_price),0)::bigint` }).from(S.listings).where(inArray(S.listings.status, ['available', 'coming_soon', 'under_offer']));
     return { asOf: MARKET_ASOF, cities: Object.entries(MARKET).map(([city, m]) => ({ city, ...m })), transactions: COMPS.map(({ buyer, ...x }) => ({ ...x, buyerType: buyer })),

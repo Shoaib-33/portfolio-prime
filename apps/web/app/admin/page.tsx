@@ -2,16 +2,18 @@ import Link from 'next/link';
 import { api, getMe } from '@/lib/api';
 import { money, dateTime, date, STATUS, DEAL } from '@/lib/format';
 import { ActionButton, ActionForm, PatchSelect, Toggle, BagCreate } from '@/components/client';
+import { AccessManager, CreateApiKey, CopyField, Icon } from '@/components/access';
 
+const SUPER_TABS: [string, string][] = [['access', 'People & access'], ['integrations', 'CRM & API']];
 const TABS: [string, string][] = [['overview', 'Overview'], ['investors', 'Investors'], ['offers', 'Offers & deals'], ['messages', 'Messages'], ['bids', 'Bid rounds'], ['processes', 'Deal processes'],['acquisitions', 'Acquisitions'], ['listings', 'Listings'], ['compliance', 'Compliance'], ['automation', 'Automation']];
 const LEAD_STAGES: [string, string][] = [['new', 'New'], ['contacted', 'Contacted'], ['valuation', 'Valuation'], ['offer_made', 'Offer made'], ['under_contract', 'Under contract'], ['acquired', 'Acquired'], ['lost', 'Lost']];
 const RULES: [string, string, string][] = [['scoring', 'Score every new lead', 'Rates each request 0–100 from type, verification, offer level and detail.'], ['followups', 'Schedule follow-ups', 'Due within 4 hours for hot leads, next day for others.'], ['emails', 'Draft confirmation emails', 'Writes to the outbox; an email provider sends them in production.'], ['matches', 'Match new listings to buy boxes', 'On publish; Investor Pro first for off-market, verified 48 h later (scheduled job).'], ['priceAlerts', 'Alert buyers to price drops', 'Savers and newly fitting saved searches get an alert.']];
 
 export default async function Admin({ searchParams }: { searchParams: Promise<{ tab?: string; investor?: string; listing?: string }> }) {
-  const me = await getMe(); const sp = await searchParams; const { tab = 'overview' } = sp;
+  const me = await getMe(); const sp = await searchParams; const sup = ['admin', 'developer'].includes(me.user?.role || ''); const { tab = sup ? 'access' : 'overview' } = sp;
   if (!me.user?.staff) return <section className="page-heading"><p className="eyebrow">STAFF WORKSPACE</p><h1>Staff only.</h1><p>Log in with a staff account (for example admin@demo.nl). Staff accounts always use two-factor login.</p><Link className="btn navy" href="/login?next=/admin">Log in ↗</Link></section>;
-  return <><section className="page-heading workspace-heading"><p className="eyebrow">STAFF WORKSPACE · {me.user.role.toUpperCase()} · {me.user.name}</p><h1>Behind the <em>offering.</em></h1><p>Roles decide what you can change: sales decides offers, compliance decides KYC, acquisition manages leads and listings, admin can do everything.</p></section>
-    <section className="section ws"><div className="ws-tabs" role="tablist">{TABS.map(([k, l]) => <Link key={k} role="tab" aria-selected={tab === k} href={`/admin?tab=${k}`} scroll={false}>{l}</Link>)}</div><div className="ws-body">{await ((tab === 'messages' ? () => Messages(sp) : null) || ({ overview: Overview, investors: Investors, offers: Offers, messages: Messages, bids: Bids, processes: Processes, acquisitions: Acquisitions, listings: Listings, compliance: Compliance, automation: Automation } as any)[tab] || Overview)()}</div></section></>;
+  return <><section className="page-heading workspace-heading"><p className="eyebrow">STAFF WORKSPACE · {me.user.role.toUpperCase()} · {me.user.name}</p><h1>Behind the <em>offering.</em></h1><p>Roles decide what you can change: sales decides offers, compliance decides KYC, acquisition manages leads and listings; admin and developer can do everything, including who sees what.</p></section>
+    <section className="section ws"><div className="ws-tabs" role="tablist">{[...(sup ? SUPER_TABS : []), ...TABS].map(([k, l]) => <Link key={k} role="tab" aria-selected={tab === k} href={`/admin?tab=${k}`} scroll={false}>{l}</Link>)}</div><div className="ws-body">{await ((tab === 'messages' ? () => Messages(sp) : tab === 'access' ? () => Access(me.user!.id) : null) || ({ integrations: Integrations, overview: Overview, investors: Investors, offers: Offers, messages: Messages, bids: Bids, processes: Processes, acquisitions: Acquisitions, listings: Listings, compliance: Compliance, automation: Automation } as any)[tab] || Overview)()}</div></section></>;
 }
 const Denied = ({ r }: { r: any }) => <div className="empty"><p className="form-error">{r.data?.message || 'Not allowed for your role.'}</p></div>;
 async function Overview() {
@@ -84,4 +86,25 @@ async function Automation() {
     <div className="panel"><p className="eyebrow">ACTIVITY LOG</p><h2>What ran, and when.</h2><ul className="log">{r.data.log.map((l: any) => <li key={l.id}><b>{l.rule}</b> · {l.text}<small>{dateTime(l.at)}</small></li>)}</ul></div></div>
     <div className="two-panels" style={{ marginTop: 30 }}><div className="panel"><p className="eyebrow">OUTBOX · DRAFTS, NOT SENT</p><h2>Emails.</h2>{(out.data || []).slice(0, 12).map((m: any) => <details key={m.id} className="document-row"><summary>{m.subject}<small>To {m.toEmail} · {dateTime(m.createdAt)}</small></summary><p>{m.body}</p></details>)}</div>
       <div className="panel"><p className="eyebrow">SCHEDULED JOBS</p><h2>Background queue.</h2>{(jobs.data || []).length ? jobs.data!.map((j: any) => <div key={j.id} className="document-row"><span>{j.kind}<small>run at {dateTime(j.runAt)} · {j.status}</small></span></div>) : <p>Bid-round closing runs every 30 seconds. Off-market releases appear here when an off-market listing is published.</p>}</div></div></>;
+}
+async function Access(meId: string) {
+  const r = await api('/admin/access'); if (!r.ok) return <Denied r={r} />;
+  return <AccessManager data={r.data} meId={meId} />;
+}
+async function Integrations() {
+  const r = await api('/admin/integrations'); if (!r.ok) return <Denied r={r} />; const d = r.data;
+  const curl = `curl -X POST https://<your-domain>/api/integrations/crm/listings \
+  -H "x-api-key: pp_live_…" -H "content-type: application/json" \
+  -d @listing.json`;
+  return <div className="integrations">
+    <div className="access-top"><div><p className="eyebrow">CRM INTEGRATION</p><h2>Listings come from the CRM.</h2><p className="muted-small">The company CRM pushes every property it buys. The same CRM id updates the same listing; withdrawing removes it from every selection.</p></div>
+      <ActionButton url="/api/admin/integrations/crm/sample" label={<><Icon name="bolt" />Send a sample listing</>} className="btn navy" done="Sample listing created from a CRM payload. See it under Listings and in People & access." /></div>
+    <div className="stat-row"><div><b>{d.crmListings}</b><span>Listings from the CRM</span></div><div><b>{d.lastSync ? dateTime(d.lastSync) : '—'}</b><span>Last sync</span></div><div><b>{d.keys.filter((k: any) => !k.revoked).length}</b><span>Active API keys</span></div><div><b>{d.envKey ? 'On' : 'Off'}</b><span>Bootstrap key (PP_CRM_API_KEY)</span></div></div>
+    <div className="two-panels"><div className="panel"><p className="eyebrow">API KEYS</p><h2>Who may push.</h2><CreateApiKey />
+      {d.keys.length ? <div className="key-list">{d.keys.map((k: any) => <div key={k.id} className={`key-row ${k.revoked ? 'revoked' : ''}`}><span className="in-ic"><Icon name="plug" /></span><div><b>{k.name}</b><small><code>{k.prefix}…</code> · created {date(k.createdAt)} · {k.lastUsedAt ? `last used ${dateTime(k.lastUsedAt)}` : 'never used'}</small></div>{k.revoked ? <span className="status-chip expired"><i />Revoked</span> : <ActionButton url={`/api/admin/integrations/keys/${k.id}/revoke`} label="Revoke" confirmText="Revoke this key? The CRM can no longer push listings with it." />}</div>)}</div> : <p className="muted-small">No keys yet. Create one and paste it into the CRM’s webhook settings.</p>}</div>
+      <div className="panel"><p className="eyebrow">ENDPOINTS</p><h2>Three calls.</h2><ul className="endpoints"><li><code className="m post">POST</code><code>/api/integrations/crm/listings</code><small>Create or update one listing (or an array of up to 200). Upsert by <code>externalId</code>.</small></li><li><code className="m del">DELETE</code><code>/api/integrations/crm/listings/:externalId</code><small>Withdraw a listing everywhere.</small></li><li><code className="m get">GET</code><code>/api/integrations/crm/ping</code><small>Check the key.</small></li></ul>
+        <pre className="code">{curl}</pre><p className="fine-print">Optional <code>shareWith</code>: emails of invited people who should see the listing at once. Publishing runs buy-box matching for people who can see it.</p></div></div>
+    <div className="two-panels"><details className="panel payload"><summary><span><p className="eyebrow">PAYLOAD</p><h2>Example listing.json</h2></span><span className="text-link">Show</span></summary><pre className="code">{JSON.stringify(d.sample, null, 2)}</pre></details>
+      <div className="panel"><p className="eyebrow">SYNC LOG</p><h2>Recent pushes.</h2>{d.log.length ? <ul className="log">{d.log.map((l: any) => <li key={l.id}>{l.text}<small>{dateTime(l.at)}</small></li>)}</ul> : <p className="muted-small">Nothing received yet. Try “Send a sample listing”.</p>}</div></div>
+  </div>;
 }

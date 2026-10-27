@@ -4,7 +4,8 @@ import { sql, eq } from 'drizzle-orm';
 import { rmSync } from 'fs';
 import { DB, schema as S, getDb, closeDb, DATA_DIR } from '../db/client';
 import { hashPassword, saveFile } from '../common';
-import { CONFIG_DEFAULTS, newTotpSecret } from '../domain';
+import { CONFIG_DEFAULTS, FEATURE_PRESETS, newTotpSecret } from '../domain';
+import { newInvite, setListings } from '../modules/access.controller';
 import { samplePdf } from '../pdf';
 
 export const DEMO_PASSWORD = 'Demo2026!';
@@ -74,7 +75,7 @@ export async function seedIfEmpty(db: DB) {
     { source: 'Website', address: 'Sample Kleverparkweg 30, Haarlem', propertyType: 'Apartment building', units: 10, askingPrice: 3400000, estValue: 3250000, stage: 'under_contract', ownerName: 'Ada Admin' },
     { source: 'Broker', address: 'Sample Assendorperstraat 5, Zwolle', propertyType: 'Residential portfolio', units: 12, askingPrice: 2300000, estValue: 2250000, stage: 'acquired', ownerName: 'Mark Visser' }]);
   await db.insert(S.automationLog).values({ rule: 'system', text: 'Demo database created and seeded' });
-  await seedMessages(db); await seedInstitutional(db);
+  await seedMessages(db); await seedInstitutional(db); await seedAccess(db);
   console.log('Seeded demo database. Demo password for all demo accounts: ' + DEMO_PASSWORD);
   return true;
 }
@@ -150,4 +151,39 @@ export async function seedMessages(db: DB) {
     { investorId: inv.id, listingId: l.id, senderId: am.id, fromStaff: true, body: 'Hi Victor, five leases index on 1 July and two mid-rent units can move to market rent after renovation. The rent roll in the data room (Financial folder) shows the dates per unit.', createdAt: new Date(t + 2 * 36e5), readAt: new Date(t + 3 * 36e5) },
     { investorId: inv.id, listingId: l.id, senderId: inv.id, body: 'Thank you. Could we schedule a viewing next week, ideally Tuesday morning?', createdAt: new Date(t + 20 * 36e5) },
   ]);
+}
+
+/** Invite-only access for the demo accounts: who sees which properties and features. Idempotent (only people whose access was never set),
+    so it also upgrades databases seeded before access control existed (the live demo). */
+const preset = (k: string) => FEATURE_PRESETS.find(p => p.key === k)!.features;
+const ACCESS: [string, 'all' | string[], string[]][] = [
+  ['free@demo.nl', ['rotterdam-zuid', 'utrecht-oost', 'amsterdam-canal-house'], ['map', 'analysis', 'messages']],
+  ['verified@demo.nl', ['rotterdam-zuid', 'utrecht-oost', 'eindhoven-collection', 'den-haag-building', 'rotterdam-penthouse', 'wassenaar-villa'], [...preset('buyer'), 'membership']],
+  ['pro@demo.nl', 'all', preset('everything')],
+  ['fund@demo.nl', ['project-tulip', 'project-delta', 'rotterdam-zuid', 'eindhoven-collection', 'utrecht-oost'], preset('institution')],
+  ['hanseatic@demo.nl', ['project-tulip', 'project-delta'], preset('institution')], ['alnoor@demo.nl', ['project-tulip', 'project-delta'], preset('institution')],
+  ['jansen@demo.nl', ['eindhoven-collection', 'rotterdam-zuid'], preset('buyer')], ['brightwater@demo.nl', ['project-tulip'], preset('viewer')], ['oranjewal@demo.nl', ['utrecht-oost', 'den-haag-building'], preset('viewer')],
+];
+export const DEMO_INVITE_TOKEN = 'demo-invite-pieter';
+export async function seedAccess(db: DB) {
+  const users = await db.select().from(S.users); const byEmail = new Map(users.map(u => [u.email, u]));
+  const slugs = new Map((await db.select().from(S.listings)).map(l => [l.slug, l.id])); const admin = byEmail.get('admin@demo.nl');
+  if (!byEmail.has('developer@demo.nl')) await db.insert(S.users).values({ email: 'developer@demo.nl', name: 'Dev Patel', passwordHash: hashPassword(DEMO_PASSWORD), role: 'developer', twofaEnabled: true, twofaSecret: newTotpSecret(), accessUpdatedAt: new Date() });
+  for (const [email, listings, features] of ACCESS) {
+    const u = byEmail.get(email); if (!u || u.accessUpdatedAt) continue;
+    await db.update(S.users).set({ listingScope: listings === 'all' ? 'all' : 'selected', features, accessUpdatedAt: new Date(), invitedBy: admin?.id || null }).where(eq(S.users.id, u.id));
+    if (listings !== 'all') await setListings(db, u.id, listings.map(x => slugs.get(x)).filter(Boolean) as string[], admin?.id || null);
+  }
+  if (!byEmail.has('pieter@demo.nl')) { // an invitation that is still waiting, with a known demo link: /invite/demo-invite-pieter
+    const [u] = await db.insert(S.users).values({ email: 'pieter@demo.nl', name: 'Pieter de Vries', companyName: 'Oranje Woonfonds', investorType: 'Fund', status: 'invited', passwordHash: 'invited$demo', listingScope: 'selected', features: preset('buyer'), invitedBy: admin?.id || null, accessUpdatedAt: new Date(), accountManager: 'Sanne de Wit' }).returning();
+    await setListings(db, u.id, ['rotterdam-zuid', 'utrecht-oost', 'eindhoven-collection'].map(x => slugs.get(x)).filter(Boolean) as string[], admin?.id || null);
+    await newInvite(db, u.id, admin?.id || null, 30, 'As discussed on the phone: three residential assets that fit your Randstad mandate.', DEMO_INVITE_TOKEN);
+  }
+  if (!(await db.select().from(S.enquiries).where(eq(S.enquiries.kind, 'access')))[0]) {
+    const day = 864e5, now = Date.now();
+    await db.insert(S.enquiries).values([
+      { kind: 'access', name: 'Lena Hoffmann', email: 'l.hoffmann@example.de', message: 'Rheinland Wohnkapital GmbH · Fund · Wants to invest · Ticket €20–60m · Looking for mid-rent portfolios in Utrecht and Rotterdam.', leadBand: 'Investor', createdAt: new Date(now - 2 * day) },
+      { kind: 'access', name: 'Joost Bakker', email: 'joost@example.nl', message: 'Bakker Beheer BV · Private BV · Invest and sell · Owns 22 homes in Haarlem; open to selling part and reinvesting.', leadBand: 'Seller', createdAt: new Date(now - 5 * 36e5) },
+    ]);
+  }
 }

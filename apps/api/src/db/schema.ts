@@ -11,6 +11,9 @@ export const users = pgTable('users', {
   twofaSecret: text('twofa_secret'), twofaEnabled: boolean('twofa_enabled').notNull().default(false),
   verified: boolean('verified').notNull().default(false), pro: boolean('pro').notNull().default(false), leadScore: integer('lead_score').notNull().default(30),
   accountManager: text('account_manager'), status: text('status').notNull().default('active'),
+  // Invite-only access: which listings (scope 'selected' uses listing_access; 'all' includes future listings) and which features this person sees.
+  listingScope: text('listing_scope').notNull().default('selected'), features: jsonb('features').$type<string[]>().notNull().default([]),
+  invitedBy: uuid('invited_by'), accessUpdatedAt: timestamp('access_updated_at', { withTimezone: true }),
   createdAt: created(), lastLoginAt: timestamp('last_login_at', { withTimezone: true }), deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, t => [uniqueIndex('users_email_idx').on(t.email)]);
 
@@ -46,7 +49,8 @@ export const listings = pgTable('listings', {
   grossRentAnnual: integer('gross_rent_annual').notNull().default(0), operatingCostsAnnual: integer('operating_costs_annual'), occupancy: integer('occupancy'),
   demand: integer('demand').notNull().default(5), featured: boolean('featured').notNull().default(false),
   publishedAt: timestamp('published_at', { withTimezone: true }), proEarlyAccessUntil: timestamp('pro_early_access_until', { withTimezone: true }), createdAt: created(),
-}, t => [uniqueIndex('listings_slug_idx').on(t.slug), index('listings_status_idx').on(t.status)]);
+  source: text('source').notNull().default('manual'), externalId: text('external_id'), syncedAt: timestamp('synced_at', { withTimezone: true }),
+}, t => [uniqueIndex('listings_slug_idx').on(t.slug), index('listings_status_idx').on(t.status), uniqueIndex('listings_external_idx').on(t.externalId)]);
 
 export const documents = pgTable('documents', {
   id: id(), listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }), folder: text('folder').notNull(), filename: text('filename').notNull(),
@@ -128,3 +132,20 @@ export const qaItems = pgTable('qa_items', {
 }, t => [index('qa_listing_idx').on(t.listingId)]);
 /* AI analyst usage log (question and mode only; answers are reproducible from the data). */
 export const aiLogs = pgTable('ai_logs', { id: serial('id').primaryKey(), userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }), listingSlug: text('listing_slug'), question: text('question').notNull(), mode: text('mode').notNull(), at: created() });
+
+/* Invite-only access. listing_access = the properties an admin shared with one person. */
+export const listingAccess = pgTable('listing_access', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }), listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
+  grantedBy: uuid('granted_by'), createdAt: created(),
+}, t => [primaryKey({ columns: [t.userId, t.listingId] }), index('listing_access_listing_idx').on(t.listingId)]);
+/* Invitation links. Only the SHA-256 of the token is stored; the link is shown once to the admin. */
+export const invites = pgTable('invites', {
+  id: id(), userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }), tokenHash: text('token_hash').notNull(),
+  message: text('message'), createdBy: uuid('created_by'), expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }), revokedAt: timestamp('revoked_at', { withTimezone: true }), createdAt: created(),
+}, t => [uniqueIndex('invites_token_idx').on(t.tokenHash), index('invites_user_idx').on(t.userId)]);
+/* API keys for system integrations (the company CRM pushes listings). Only a hash is stored. */
+export const apiKeys = pgTable('api_keys', {
+  id: id(), name: text('name').notNull(), prefix: text('prefix').notNull(), keyHash: text('key_hash').notNull(), createdBy: uuid('created_by'),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }), revokedAt: timestamp('revoked_at', { withTimezone: true }), createdAt: created(),
+}, t => [uniqueIndex('api_keys_hash_idx').on(t.keyHash)]);

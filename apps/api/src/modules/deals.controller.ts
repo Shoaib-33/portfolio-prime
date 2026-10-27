@@ -4,8 +4,8 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import { eq, and, asc } from 'drizzle-orm';
 import { DB, schema as S } from '../db/client';
-import { Req as R, requireUser, audit, notify, logRule, ruleOn, draftEmail, saveFile, readStored, signToken, readToken, viewerOf } from '../common';
-import { leadScore, offMarketState, isStaff } from '../domain';
+import { Req as R, requireUser, requireFeature, audit, notify, logRule, ruleOn, draftEmail, saveFile, readStored, signToken, readToken, viewerOf } from '../common';
+import { leadScore, offMarketState, isStaff, canSeeListing, hasFeature } from '../domain';
 import { parse } from './public.controller';
 import { checkFile } from './account.controller';
 import { getListing, hasNda } from './listings.service';
@@ -14,10 +14,12 @@ import { watermark } from '../pdf';
 @Controller()
 export class DealsController {
   constructor(@Inject('DB') private db: DB) {}
-  private async listingOr404(slug: string, req: R) { const x = await getListing(this.db, slug); if (!x || ['draft', 'withdrawn'].includes(x.l.status) || offMarketState(x.l.dealType, x.l.proEarlyAccessUntil, viewerOf(req)) !== 'open') throw new NotFoundException('Listing not found'); return x; }
+  private async listingOr404(slug: string, req: R) { const x = await getListing(this.db, slug); if (!x || !canSeeListing(viewerOf(req), x.l.id) || ['draft', 'withdrawn'].includes(x.l.status) || offMarketState(x.l.dealType, x.l.proEarlyAccessUntil, viewerOf(req)) !== 'open') throw new NotFoundException('Listing not found'); return x; }
   /** Data-room gate (plan: login, KYC verified, NDA signed, 2FA, then a signed URL). */
   private async roomGate(req: R, listingId: string) {
     const u = requireUser(req); if (isStaff(u)) return u;
+    const v = viewerOf(req); if (!canSeeListing(v, listingId)) throw new NotFoundException();
+    if (!hasFeature(v, 'dataroom') && !hasFeature(v, 'institutional')) throw new ForbiddenException('The data room is not included in your access. Ask your account manager.');
     if (!u.verified) throw new ForbiddenException('Complete verification (KYC) first.');
     if (!(await hasNda(this.db, u.id, listingId))) throw new ForbiddenException('Accept the NDA for this property first.');
     if (!u.twofaEnabled || !u.twofaPassed) throw new ForbiddenException('Two-factor login is required for the data room.');
@@ -25,14 +27,15 @@ export class DealsController {
   }
 
   @Post('listings/:slug/nda') async nda(@Req() req: R, @Param('slug') slug: string, @Body() body: unknown) {
-    const u = requireUser(req); if (!u.verified) throw new ForbiddenException('Complete verification (KYC) first.');
-    const x = await this.listingOr404(slug, req); const b = parse(z.object({ signedName: z.string().trim().min(2).max(80), accept: z.literal(true) }), body);
+    const u = requireUser(req); const x = await this.listingOr404(slug, req);
+    requireFeature(req, x.l.dealType === 'institutional' ? 'institutional' : 'dataroom'); if (!u.verified) throw new ForbiddenException('Complete verification (KYC) first.');
+    const b = parse(z.object({ signedName: z.string().trim().min(2).max(80), accept: z.literal(true) }), body);
     if (await hasNda(this.db, u.id, x.l.id)) return { ok: true, already: true };
     const [n] = await this.db.insert(S.ndaSignatures).values({ userId: u.id, listingId: x.l.id, signedName: b.signedName, templateVersion: 'NDA v1.2 (NL/EN)', method: 'clickwrap', ip: String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''), userAgent: String(req.headers['user-agent'] || '').slice(0, 300) }).returning();
     await audit(this.db, req, 'nda_sign', 'listing', x.l.id, { template: n.templateVersion }); return { ok: true };
   }
   @Get('listings/:slug/dataroom') async room(@Req() req: R, @Param('slug') slug: string) {
-    const x = await this.listingOr404(slug, req); await this.roomGate(req, x.l.id);
+    const x = await this.listingOr404(slug, req); requireFeature(req, x.l.dealType === 'institutional' ? 'institutional' : 'dataroom'); await this.roomGate(req, x.l.id);
     const docs = await this.db.select().from(S.documents).where(eq(S.documents.listingId, x.l.id)).orderBy(asc(S.documents.folder), asc(S.documents.filename));
     const folders: Record<string, any[]> = {}; for (const d of docs) (folders[d.folder] ||= []).push({ id: d.id, filename: d.filename, version: d.version, downloadAllowed: d.downloadAllowed, uploadedAt: d.createdAt });
     return { listing: x.l.name, folders: Object.entries(folders).map(([name, files]) => ({ name, files })) };
@@ -54,7 +57,7 @@ export class DealsController {
   /* ---------- Offers, viewings, questions ---------- */
   @Post('listings/:slug/offers') @UseInterceptors(FileFieldsInterceptor([{ name: 'proof', maxCount: 1 }], { limits: { fileSize: 10 * 1024 * 1024 } }))
   async offer(@Req() req: R, @Param('slug') slug: string, @UploadedFiles() files: { proof?: Express.Multer.File[] }, @Body() body: any) {
-    const u = requireUser(req); if (!u.verified) throw new ForbiddenException('Only verified investors can make offers.');
+    const u = requireFeature(req, 'offers'); if (!u.verified) throw new ForbiddenException('Only verified investors can make offers.');
     const x = await this.listingOr404(slug, req); if (x.l.status !== 'available') throw new BadRequestException('This property is not open for offers.'); if (x.l.dealType === 'bid_round') throw new BadRequestException('This property is sold through a bid round.'); if (x.l.dealType === 'institutional') throw new BadRequestException('This portfolio is sold through a structured process. Submit your bid in the Process tab.');
     const b = parse(z.object({ amount: z.coerce.number().int().min(100000).max(1e9), transferDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), financingType: z.enum(['Mortgage', 'Cash', 'Mixed']), conditions: z.union([z.string(), z.array(z.string())]).optional(), units: z.string().optional(), message: z.string().max(2000).optional() }), body);
     if (new Date(b.transferDate) < new Date(new Date().toDateString())) throw new BadRequestException('The transfer date must be in the future.');
@@ -94,8 +97,8 @@ export class DealsController {
   /* ---------- Sealed bids (plan: P2 bid rounds) ---------- */
   @Post('bid-rounds/:id/bids') @UseInterceptors(FileFieldsInterceptor([{ name: 'proof', maxCount: 1 }], { limits: { fileSize: 10 * 1024 * 1024 } }))
   async bid(@Req() req: R, @Param('id') id: string, @UploadedFiles() files: { proof?: Express.Multer.File[] }, @Body() body: any) {
-    const u = requireUser(req); if (!u.verified) throw new ForbiddenException('Only verified investors can bid.');
-    const r = (await this.db.select().from(S.bidRounds).where(eq(S.bidRounds.id, id)))[0]; if (!r) throw new NotFoundException();
+    const u = requireFeature(req, 'offers'); if (!u.verified) throw new ForbiddenException('Only verified investors can bid.');
+    const r = (await this.db.select().from(S.bidRounds).where(eq(S.bidRounds.id, id)))[0]; if (!r || !canSeeListing(viewerOf(req), r.listingId)) throw new NotFoundException();
     if (r.status !== 'open' || new Date() >= r.closesAt) throw new BadRequestException('This bid round is closed.');
     const b = parse(z.object({ amount: z.coerce.number().int().min(r.minBid, `The minimum bid is €${r.minBid.toLocaleString('nl-NL')}`).max(1e9), conditions: z.enum(['No conditions', 'Subject to financing', 'Subject to due diligence']), acceptRules: z.literal('on') }), body);
     const pf = checkFile(files?.proof?.[0], 'Proof of funds');

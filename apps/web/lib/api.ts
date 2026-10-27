@@ -11,6 +11,6 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
     return { ok: r.ok, status: r.status, data };
   } catch { return { ok: false, status: 503, data: { message: 'The API is not running. Start it with: npm run dev:api' } as any }; }
 }
-export type Me = { user: null | { id: string; name: string; email: string; role: string; locale: string; investorType: string; country: string; companyName: string | null; verified: boolean; pro: boolean; twofaEnabled: boolean; twofaPassed: boolean; tier: 'free' | 'verified' | 'pro'; tierLabel: string; alertFrequency: string; staff: boolean }; kyc?: { status: string; risk?: string }; unread?: number };
+export type Me = { user: null | { id: string; name: string; email: string; role: string; locale: string; investorType: string; country: string; companyName: string | null; verified: boolean; pro: boolean; twofaEnabled: boolean; twofaPassed: boolean; tier: 'free' | 'verified' | 'pro'; tierLabel: string; alertFrequency: string; staff: boolean; features: string[]; listingScope: 'all' | 'selected'; listings: number | null; accountManager: string | null }; kyc?: { status: string; risk?: string }; unread?: number };
 export async function getMe(): Promise<Me> { const r = await api<Me>('/me'); return r.ok ? r.data : { user: null }; }
 export async function getLang(): Promise<'nl' | 'en'> { const jar = await cookies(); return jar.get('pp_lang')?.value === 'nl' ? 'nl' : 'en'; }

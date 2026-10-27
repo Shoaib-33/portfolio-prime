@@ -2,8 +2,8 @@ import { Controller, Get, Post, Body, Query, Req, Inject, NotFoundException, Bad
 import { z } from 'zod';
 import { and, eq, isNull, desc, asc } from 'drizzle-orm';
 import { DB, schema as S } from '../db/client';
-import { Req as R, requireUser, requireStaff, audit, notify, draftEmail } from '../common';
-import { isStaff } from '../domain';
+import { Req as R, requireUser, requireStaff, requireFeature, viewerOf, audit, notify, draftEmail } from '../common';
+import { isStaff, canSeeListing } from '../domain';
 import { parse } from './public.controller';
 
 /** Plan section 11: secure in-platform messaging between investor and account manager, one thread per listing. */
@@ -11,9 +11,9 @@ import { parse } from './public.controller';
 export class MessagesController {
   constructor(@Inject('DB') private db: DB) {}
 
-  private async listing(slug?: string | null) {
+  private async listing(slug?: string | null, req?: R) {
     if (!slug || slug === 'general') return null;
-    const l = (await this.db.select().from(S.listings).where(eq(S.listings.slug, slug)))[0]; if (!l) throw new NotFoundException('Listing not found'); return l;
+    const l = (await this.db.select().from(S.listings).where(eq(S.listings.slug, slug)))[0]; if (!l || (req && !canSeeListing(viewerOf(req), l.id))) throw new NotFoundException('Listing not found'); return l;
   }
   private thread(investorId: string, listingId: string | null) { return and(eq(S.messages.investorId, investorId), listingId ? eq(S.messages.listingId, listingId) : isNull(S.messages.listingId)); }
   private async threads(investorId?: string) {
@@ -35,16 +35,16 @@ export class MessagesController {
   private info(l: { slug: string; name: string } | null) { return l ? { slug: l.slug, name: l.name } : { slug: 'general', name: 'General question' }; }
 
   /* ---------- Investor ---------- */
-  @Get('messages') async mine(@Req() req: R) { const u = requireUser(req); return { threads: await this.threads(u.id) }; }
+  @Get('messages') async mine(@Req() req: R) { const u = requireFeature(req, 'messages'); return { threads: await this.threads(u.id) }; }
   @Get('messages/thread') async myThread(@Req() req: R, @Query('listing') slug: string) {
-    const u = requireUser(req); const l = await this.listing(slug);
+    const u = requireFeature(req, 'messages'); const l = await this.listing(slug, req);
     await this.db.update(S.messages).set({ readAt: new Date() }).where(and(this.thread(u.id, l?.id ?? null), eq(S.messages.fromStaff, true), isNull(S.messages.readAt)));
     return { listing: this.info(l), accountManager: u.accountManager || 'Sanne de Wit', messages: await this.conversation(u.id, l?.id ?? null) };
   }
   @Post('messages') async send(@Req() req: R, @Body() body: unknown) {
-    const u = requireUser(req); if (isStaff(u)) throw new BadRequestException('Staff reply from the staff workspace.');
+    const u = requireFeature(req, 'messages'); if (isStaff(u)) throw new BadRequestException('Staff reply from the staff workspace.');
     const b = parse(z.object({ listing: z.string().max(120).optional(), body: z.string().trim().min(2).max(4000) }), body);
-    const l = await this.listing(b.listing);
+    const l = await this.listing(b.listing, req);
     const [m] = await this.db.insert(S.messages).values({ investorId: u.id, listingId: l?.id ?? null, senderId: u.id, body: b.body }).returning();
     await audit(this.db, req, 'message_sent', 'message', m.id, { listing: l?.slug || 'general' });
     return { id: m.id };

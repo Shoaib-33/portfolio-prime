@@ -2,10 +2,10 @@ import { Controller, Get, Post, Param, Query, Body, Req, Inject, NotFoundExcepti
 import { z } from 'zod';
 import { eq, sql, and, inArray } from 'drizzle-orm';
 import { DB, schema as S, dbKind } from '../db/client';
-import { Req as R, viewerOf, getConfig, serializeListing, audit, logRule, draftEmail } from '../common';
+import { Req as R, viewerOf, getConfig, serializeListing, audit, logRule, draftEmail, requireUser, requireFeature } from '../common';
 import { canDetails, finance, figures, CONFIG_DEFAULTS, cfg, bagLookup, offMarketState, priceBand, maxPrice, dealScore } from '../domain';
 import { resolvePlace } from '../geo';
-import { listListings, getListing, hasNda, bidRoundInfo, unitCounts, staffOrVerified } from './listings.service';
+import { listListings, getListing, visibleListing, hasNda, bidRoundInfo, unitCounts, staffOrVerified } from './listings.service';
 
 export const parse = <T extends z.ZodTypeAny>(s: T, v: unknown): z.infer<T> => { const r = s.safeParse(v); if (!r.success) throw new BadRequestException(r.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')); return r.data; };
 
@@ -19,7 +19,8 @@ export class PublicController {
     const inv = await this.db.select({ n: sql<number>`count(*)::int` }).from(S.users).where(and(eq(S.users.role, 'investor'), eq(S.users.verified, true)));
     return { dealsClosed: 33 + Number(sold[0].n), volumeM: Math.round(191 + Number(sold[0].v) / 1e6), verifiedInvestors: 1236 + Number(inv[0].n), avgDaysToOffer: 23, note: 'Historic baseline plus live database counts' };
   }
-  @Get('listings') async list(@Req() req: R, @Query() q: Record<string, string>) { return listListings(this.db, viewerOf(req), q); }
+  /** Invite-only: the offering is private. Logged-in people get the properties shared with them. */
+  @Get('listings') async list(@Req() req: R, @Query() q: Record<string, string>) { requireUser(req); return listListings(this.db, viewerOf(req), q); }
   @Get('listings/sold') async sold() {
     const rows = await this.db.select().from(S.listings).innerJoin(S.properties, eq(S.listings.propertyId, S.properties.id)).where(eq(S.listings.status, 'sold'));
     const counts = await unitCounts(this.db, rows.map(r => r.properties.id));
@@ -27,14 +28,15 @@ export class PublicController {
   }
   /** Plan: GET /listings/map. GeoJSON for the map view, same filters and access rules as the list. */
   @Get('listings/map') async map(@Req() req: R, @Query() q: Record<string, string>) {
+    requireFeature(req, 'map');
     const rows = (await listListings(this.db, viewerOf(req), q)).filter((l: any) => !l.locked && l.point);
     return { type: 'FeatureCollection', features: rows.map((l: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [l.point.lng, l.point.lat] }, properties: { slug: l.slug, name: l.name, city: l.city, district: l.district, price: l.askingPrice ?? null, priceDisplay: l.priceDisplay, bar: l.bar, status: l.status, image: l.image, approx: l.point.approx } })) };
   }
   /** Place lookup used by the radius filter (city table, then PDOK Locatieserver). */
   @Get('geo/resolve') async geo(@Query('q') q: string) { return { place: await resolvePlace(q) }; }
   @Get('listings/:slug') async detail(@Req() req: R, @Param('slug') slug: string) {
-    const x = await getListing(this.db, slug); if (!x || ['draft', 'withdrawn'].includes(x.l.status)) throw new NotFoundException('Listing not found');
-    const v = viewerOf(req); const c = await getConfig(this.db);
+    requireUser(req); const v = viewerOf(req);
+    const x = await visibleListing(this.db, slug, v); if (!x || ['draft', 'withdrawn'].includes(x.l.status)) throw new NotFoundException('Listing not found'); const c = await getConfig(this.db);
     const counts = await unitCounts(this.db, [x.p.id]); const nda = await hasNda(this.db, v?.id, x.l.id);
     const saved = v?.id ? !!(await this.db.select().from(S.favorites).where(and(eq(S.favorites.userId, v.id), eq(S.favorites.listingId, x.l.id))))[0] : false;
     const bid = await bidRoundInfo(this.db, x.l.id);
@@ -47,7 +49,7 @@ export class PublicController {
   }
   /** Unit-level rent roll: verified investor with the NDA for this listing (or staff). */
   @Get('listings/:slug/units') async units(@Req() req: R, @Param('slug') slug: string) {
-    const x = await getListing(this.db, slug); if (!x) throw new NotFoundException(); const v = viewerOf(req);
+    requireFeature(req, 'dataroom'); const v = viewerOf(req); const x = await visibleListing(this.db, slug, v); if (!x) throw new NotFoundException();
     if (!(staffOrVerified(v) && (await hasNda(this.db, v?.id, x.l.id) || v?.role !== 'investor'))) throw new ForbiddenException('Verification and the property NDA are required.');
     const u = await this.db.select().from(S.units).where(eq(S.units.propertyId, x.p.id)).orderBy(S.units.ref);
     return u.map(r => ({ ref: r.ref, areaM2: r.areaM2, rentMonthly: r.rentMonthly, rentType: r.rentType, energyLabel: r.energyLabel, occupancy: r.occupancy, unitPrice: Math.round(x.l.askingPrice / u.length * 1.06) }));
@@ -56,12 +58,13 @@ export class PublicController {
   @Post('calculations') async calc(@Req() req: R, @Body() body: unknown) {
     const b = parse(z.object({ slug: z.string(), ltv: z.coerce.number().min(0).max(90).default(60), interest: z.coerce.number().min(0).max(15).default(4), expense: z.coerce.number().min(0).max(80).default(22), vacancy: z.coerce.number().min(0).max(50).default(3) }), body);
     if (!canDetails(viewerOf(req))) throw new ForbiddenException('Join free to use the calculator.');
-    const x = await getListing(this.db, b.slug); if (!x) throw new NotFoundException(); if (offMarketState(x.l.dealType, x.l.proEarlyAccessUntil, viewerOf(req)) !== 'open') throw new ForbiddenException();
+    const x = await visibleListing(this.db, b.slug, viewerOf(req)); if (!x) throw new NotFoundException(); if (offMarketState(x.l.dealType, x.l.proEarlyAccessUntil, viewerOf(req)) !== 'open') throw new ForbiddenException();
     const c = await getConfig(this.db);
     return { inputs: b, finance: finance(x.l.askingPrice, x.l.grossRentAnnual, b), figures: figures({ askingPrice: x.l.askingPrice, grossRentAnnual: x.l.grossRentAnnual, operatingCostsAnnual: x.l.operatingCostsAnnual, areaM2: x.p.areaM2, unitsCount: 1 }, c), disclaimer: 'Indicative only. Not investment or tax advice.' };
   }
   /** Smart finder: rank available income listings by reach and deal score. */
   @Get('finder') async finder(@Req() req: R, @Query() q: Record<string, string>) {
+    requireFeature(req, 'finder');
     const equity = Number(q.equity || 2500000), ltv = Number(q.ltv || 60), interest = Number(q.interest || 4), minYield = Number(q.minYield || 0), city = q.city || 'all';
     const all = (await listListings(this.db, viewerOf(req), {})).filter((l: any) => !l.locked && l.status === 'available' && l.bar && (city === 'all' || l.city === city));
     const rows = [];
@@ -71,6 +74,7 @@ export class PublicController {
   }
   /** "Sell your property to us" lead form (plan: key lead source for the acquisition CRM). */
   @Post('sell-leads') async sellLead(@Req() req: R, @Body() body: unknown) {
+    requireFeature(req, 'sell');
     const b = parse(z.object({ postcode: z.string().min(6).max(8), number: z.string().min(1).max(10), propertyType: z.string().max(60), units: z.coerce.number().int().min(1).max(1000), rent: z.coerce.number().min(0).optional(), asking: z.coerce.number().min(0).optional(), name: z.string().min(2).max(80), email: z.string().email().max(160), consent: z.literal(true) }), body);
     const bag = bagLookup(b.postcode, b.number); const city = bag?.city || 'the Netherlands';
     const bars: Record<string, number> = { Amsterdam: 4.4, Rotterdam: 6, Utrecht: 5.1, Eindhoven: 6.1, 'Den Haag': 5.6, Haarlem: 5 };

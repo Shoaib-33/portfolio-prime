@@ -27,11 +27,13 @@ Password for all: `Demo2026!`. One-click buttons are on the login page. Accounts
 
 | Account | What it shows |
 |---|---|
-| free@demo.nl | Free member: full financials and addresses, no data room or offers |
-| verified@demo.nl | Verified investor: NDA, data room, offers, bid round (2FA on) |
-| pro@demo.nl | Investor Pro: off-market first look; family office, so also qualified for private deal rooms |
-| fund@demo.nl | Institutional (pension fund): private deal rooms, sale process, bids, Q&A, IC memo, mandate matching |
-| admin@demo.nl | Staff, all rights |
+| free@demo.nl | Invited buyer: exactly 3 shared properties; map, analysis and messages switched on |
+| verified@demo.nl | Verified buyer: 6 properties; NDA, data room, offers, bid round (2FA on) |
+| pro@demo.nl | Investor Pro: all properties (including future ones) and every feature |
+| fund@demo.nl | Institutional (pension fund): private deal rooms, sale process, bids, Q&A, IC memo, AI analyst |
+| admin@demo.nl | Staff, all rights; manages People & access |
+| developer@demo.nl | Developer: all rights, including People & access and CRM & API keys |
+| /invite/demo-invite-pieter | A pending invitation (Pieter de Vries, 3 properties) to try the activation flow |
 | compliance@demo.nl | Staff: KYC queue, audit log, flagging |
 | sales@demo.nl | Staff: offers, deals, bid rounds |
 | acquisition@demo.nl | Staff: seller leads, BAG lookup, listings |
@@ -54,6 +56,13 @@ Access control is enforced in the API (`serializeListing` in `apps/api/src/commo
 
 Public site, listings with filters (type, city, province, radius around a city or postcode via PDOK Locatieserver, deal type, price, yield, energy label) and search, **map view** (MapLibre + PDOK base map, clustered pins; visitors only see the approximate area), **SEO landing pages** per city and type (`/beleggingspanden/rotterdam`, `/beleggingspanden/rotterdam/woningportefeuilles`) with schema.org RealEstateListing/BreadcrumbList/ItemList markup, `sitemap.xml`, `robots.txt` and Open Graph images, key figures (BAR, NAR, price per m², WOZ, tenure), sold archive, NL/EN switch for the main pages, Smart finder · sign-up and login with 2FA, buy box, saved searches, favourites, notifications, data export and deletion · KYC upload with risk scoring and compliance review · NDA per listing, data room with folders, watermarked viewer, download policy and audit log · server-side calculator · offers with proof of funds, admin accept/counter/reject, deal timeline · **secure messaging** between investor and account manager per listing (staff reply from the workspace; email only announces a new message) · sealed bid rounds with minimum bid, scheduled close and award · Investor Pro checkout (simulated Mollie) and off-market early access · staff workspace: KPIs and funnel, investor CRM, offers and deals, bid rounds, acquisition pipeline, BAG lookup to create and publish listings with buy-box matching, price changes with alerts, config table for transfer tax, KYC queue, FIU flagging, audit log, automation rules, outbox and job queue.
 
+## Invite-only access
+
+- **Visitors** see only the public company site (what we do, how access works, anonymised track record, guides) and a *Request access* form. There is no self-registration; `/api/listings`, details, map, market report and all tools answer 401.
+- **Admins and developers** create people in *Staff workspace › People & access*: name, role, the properties they see (a selection, or *all properties* including future CRM listings) and the features switched on (map, smart finder, market report, analysis & memo, AI analyst, data room, private deal rooms, offers & bids, messages, membership, sell to us; presets Viewer / Buyer / Institution / Everything). The invitation link (`/invite/<token>`, single use, 3–30 days, only a hash is stored) lets the person set a password. Admins can change access at any time (effective on the next request), send a new link, revoke it, or pause someone (signed out at once). Access requests from the website appear in the same tab.
+- **Enforcement is on the server**: `canSeeListing` and `hasFeature` in `domain.ts`, loaded per session in `common.ts`; a property that is not shared answers 404, a feature that is off answers 403. Alerts (buy-box matches, price drops) only go to people who can see the property. The web layouts (`components/gate.tsx`) only decide what to show instead of an error.
+- **CRM integration** (`integrations.controller.ts`): the company CRM pushes listings to `POST /api/integrations/crm/listings` with an `x-api-key` (keys created and revoked in *CRM & API*, stored hashed; `PP_CRM_API_KEY` works as a bootstrap key). Upsert by `externalId` (one object or an array of up to 200), optional unit rent roll and `shareWith` emails; `DELETE /api/integrations/crm/listings/:externalId` withdraws. Photos may be `https://` URLs.
+
 ## Institutional layer
 
 - **Private deal rooms** (`dealType: institutional`, e.g. Project Tulip, 860 homes; Project Delta, build-to-rent forward funding): codename teaser for everyone, details only for verified funds, family offices, pension funds and insurers (`isQualified` in `domain.ts`).
@@ -68,7 +77,7 @@ Market benchmarks and comparable transactions are fictional demo data (`MARKET`,
 
 ## Tests
 
-`npm test` (from `platform/`) runs 26 tests: business rules (tiers, off-market timing, BAR/NAR, KYC risk, matching, RFC 6238 TOTP vectors, IRR and scenarios, WWS points, ESG, valuation, flags, mandate fit) and end-to-end API tests on a fresh in-memory database (no leaks to visitors, watermarked links bound to the user, offer → deal, bid rounds, roles, KYC, map points and radius search, messaging privacy and roles, private deal rooms and sale process, analysis, memo and AI analyst access levels).
+`npm test` (from `platform/`) runs 28 tests: business rules (tiers, off-market timing, BAR/NAR, KYC risk, matching, RFC 6238 TOTP vectors, IRR and scenarios, WWS points, ESG, valuation, flags, mandate fit) and end-to-end API tests on a fresh in-memory database (no leaks to visitors, watermarked links bound to the user, offer → deal, bid rounds, roles, KYC, map points and radius search, messaging privacy and roles, private deal rooms and sale process, analysis, memo and AI analyst access levels, invite-only access: invitations, per-person properties and features, pausing, and the CRM API).
 
 ## Before real investors use it
 

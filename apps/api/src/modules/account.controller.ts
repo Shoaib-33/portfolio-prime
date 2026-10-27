@@ -4,36 +4,31 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import { eq, and, desc } from 'drizzle-orm';
 import { DB, schema as S } from '../db/client';
-import { Req as R, requireUser, hashPassword, verifyPassword, createSession, SESSION_COOKIE, cookieOpts, audit, notify, logRule, saveFile, getConfig, viewerOf } from '../common';
-import { tierOf, alertFrequency, kycRisk, newTotpSecret, verifyTotp, totp, cfg, TIER_LABEL, DEAL_STAGES } from '../domain';
+import { Req as R, requireUser, requireFeature, hashPassword, verifyPassword, createSession, SESSION_COOKIE, cookieOpts, audit, notify, logRule, saveFile, getConfig, viewerOf } from '../common';
+import { tierOf, alertFrequency, canSeeListing, featuresOf, kycRisk, newTotpSecret, verifyTotp, totp, cfg, TIER_LABEL, DEAL_STAGES } from '../domain';
 import { parse } from './public.controller';
 import { getListing } from './listings.service';
 
 const DEMO = process.env.PP_DEMO !== '0';
 const ALLOWED = ['application/pdf', 'image/png', 'image/jpeg'];
 export const checkFile = (f?: Express.Multer.File, label = 'File') => { if (!f) throw new BadRequestException(`${label} is required.`); if (!ALLOWED.includes(f.mimetype)) throw new BadRequestException(`${label} must be a PDF, PNG or JPG.`); return f; };
-export const publicUser = (u: any) => u && ({ id: u.id, name: u.name, email: u.email, role: u.role, locale: u.locale, investorType: u.investorType, country: u.country, companyName: u.companyName, verified: u.verified, pro: u.pro, twofaEnabled: u.twofaEnabled, tier: tierOf(u), tierLabel: TIER_LABEL[tierOf(u)], alertFrequency: alertFrequency(u), staff: u.role !== 'investor', twofaPassed: u.twofaPassed });
+export const publicUser = (u: any) => u && ({ features: featuresOf(u), listingScope: u.role !== 'investor' ? 'all' : u.listingScope, listings: u.role !== 'investor' || u.listingScope === 'all' ? null : (u.listingIds || []).length, accountManager: u.accountManager, id: u.id, name: u.name, email: u.email, role: u.role, locale: u.locale, investorType: u.investorType, country: u.country, companyName: u.companyName, verified: u.verified, pro: u.pro, twofaEnabled: u.twofaEnabled, tier: tierOf(u), tierLabel: TIER_LABEL[tierOf(u)], alertFrequency: alertFrequency(u), staff: u.role !== 'investor', twofaPassed: u.twofaPassed });
 
 @Controller()
 export class AccountController {
   constructor(@Inject('DB') private db: DB) {}
-  @Post('auth/register') async register(@Req() req: R, @Res({ passthrough: true }) res: Response, @Body() body: unknown) {
-    const b = parse(z.object({ name: z.string().trim().min(2).max(80), email: z.string().trim().toLowerCase().email().max(160), password: z.string().min(8).max(200), investorType: z.enum(['Private person', 'Private BV', 'Fund', 'Family office', 'Pension fund', 'Insurer', 'Developer']), country: z.string().length(2), companyName: z.string().max(120).optional(), acceptTerms: z.literal(true), locale: z.enum(['nl', 'en']).default('en') }), body);
-    if ((await this.db.select().from(S.users).where(eq(S.users.email, b.email)))[0]) throw new ConflictException('An account with this email already exists.');
-    const [u] = await this.db.insert(S.users).values({ name: b.name, email: b.email, passwordHash: hashPassword(b.password), investorType: b.investorType, country: b.country.toUpperCase(), companyName: b.companyName, locale: b.locale, lastLoginAt: new Date() }).returning();
-    res.cookie(SESSION_COOKIE, await createSession(this.db, u.id, true), cookieOpts);
-    req.user = { ...u, sessionId: '', twofaPassed: true }; await audit(this.db, req, 'register', 'user', u.id, { investorType: b.investorType });
-    await notify(this.db, u.id, 'welcome', 'Welcome to Portfolio & Prime', 'You now see full financials and addresses. Verify your account to open data rooms and make offers.');
-    return { user: publicUser({ ...u, twofaPassed: true }) };
-  }
+  /** Invite-only platform: accounts are created by an admin and activated through an invitation link (AccessController). */
+  @Post('auth/register') register() { throw new ForbiddenException('Portfolio & Prime is by invitation only. Request access on the home page, or use the link in your invitation.'); }
   @Post('auth/login') async login(@Req() req: R, @Res({ passthrough: true }) res: Response, @Body() body: unknown) {
     const b = parse(z.object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1) }), body);
     const u = (await this.db.select().from(S.users).where(eq(S.users.email, b.email)))[0];
-    if (!u || u.deletedAt || !verifyPassword(b.password, u.passwordHash)) { await audit(this.db, req, 'login_failed', 'user', null, { email: b.email }); throw new UnauthorizedException('Email or password is incorrect.'); }
+    if (!u || u.deletedAt || !verifyPassword(b.password, u.passwordHash)) { await audit(this.db, req, 'login_failed', 'user', null, { email: b.email }); throw new UnauthorizedException(u?.status === 'invited' ? 'Your account is not active yet. Open the invitation link you received to set your password.' : 'Email or password is incorrect.'); }
+    if (u.status === 'suspended') { await audit(this.db, req, 'login_blocked', 'user', u.id); throw new ForbiddenException('Your access is paused. Please contact your account manager.'); }
     res.cookie(SESSION_COOKIE, await createSession(this.db, u.id, !u.twofaEnabled), cookieOpts);
     await this.db.update(S.users).set({ lastLoginAt: new Date() }).where(eq(S.users.id, u.id));
-    req.user = { ...u, sessionId: '', twofaPassed: !u.twofaEnabled }; await audit(this.db, req, 'login', 'user', u.id);
-    return { needs2fa: u.twofaEnabled, user: publicUser({ ...u, twofaPassed: !u.twofaEnabled }), ...(DEMO && u.twofaEnabled ? { demoCode: totp(u.twofaSecret!) } : {}) };
+    req.user = { ...u, sessionId: '', twofaPassed: !u.twofaEnabled, listingIds: [] }; await audit(this.db, req, 'login', 'user', u.id);
+    const listingIds = (await this.db.select({ id: S.listingAccess.listingId }).from(S.listingAccess).where(eq(S.listingAccess.userId, u.id))).map(r => r.id);
+    return { needs2fa: u.twofaEnabled, user: publicUser({ ...u, listingIds, twofaPassed: !u.twofaEnabled }), ...(DEMO && u.twofaEnabled ? { demoCode: totp(u.twofaSecret!) } : {}) };
   }
   @Post('auth/2fa/verify') async verify2fa(@Req() req: R, @Body() body: unknown) {
     const u = requireUser(req); const b = parse(z.object({ code: z.string().regex(/^\d{6}$/) }), body);
@@ -100,7 +95,7 @@ export class AccountController {
   }
   @Delete('saved-searches/:id') async delSearch(@Req() req: R, @Param('id') id: string) { const u = requireUser(req); await this.db.delete(S.savedSearches).where(and(eq(S.savedSearches.id, id), eq(S.savedSearches.userId, u.id))); return { ok: true }; }
   @Post('favorites/:slug') async fav(@Req() req: R, @Param('slug') slug: string) {
-    const u = requireUser(req); const x = await getListing(this.db, slug); if (!x) throw new NotFoundException();
+    const u = requireUser(req); const x = await getListing(this.db, slug); if (!x || !canSeeListing(viewerOf(req), x.l.id)) throw new NotFoundException();
     const has = (await this.db.select().from(S.favorites).where(and(eq(S.favorites.userId, u.id), eq(S.favorites.listingId, x.l.id))))[0];
     if (has) await this.db.delete(S.favorites).where(and(eq(S.favorites.userId, u.id), eq(S.favorites.listingId, x.l.id))); else await this.db.insert(S.favorites).values({ userId: u.id, listingId: x.l.id });
     return { saved: !has };
@@ -123,7 +118,7 @@ export class AccountController {
 
   /* ---------- Billing (plan: Mollie subscriptions; simulated here) ---------- */
   @Post('billing/checkout') async checkout(@Req() req: R, @Body() body: unknown) {
-    const u = requireUser(req); if (!u.verified) throw new ForbiddenException('Verify your account before upgrading to Investor Pro.'); if (u.pro) throw new BadRequestException('You are already on Investor Pro.');
+    const u = requireFeature(req, 'membership'); if (!u.verified) throw new ForbiddenException('Verify your account before upgrading to Investor Pro.'); if (u.pro) throw new BadRequestException('You are already on Investor Pro.');
     const b = parse(z.object({ plan: z.enum(['month', 'year']), method: z.enum(['iDEAL', 'Card', 'SEPA direct debit']), withdrawalAcknowledged: z.literal(true) }), body);
     const c = await getConfig(this.db); const amount = b.plan === 'year' ? cfg(c, 'pro_price_year') : cfg(c, 'pro_price_month');
     const [s] = await this.db.insert(S.subscriptions).values({ userId: u.id, plan: b.plan, method: b.method, molliePaymentId: 'tr_demo_' + Date.now().toString(36), currentPeriodEnd: new Date(Date.now() + (b.plan === 'year' ? 365 : 30) * 864e5) }).returning();
