@@ -9,10 +9,40 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+# Investors the tests work with (the demo itself has one investor; the admin invites everyone else).
+PEOPLE = {
+    'free@test.nl': dict(name='Femke Free', slugs=['rotterdam-zuid', 'utrecht-oost', 'amsterdam-canal-house'], features=['map', 'analysis', 'messages']),
+    'verified@test.nl': dict(name='Victor Verified', investor_type='Private BV', company_name='Victor Beheer BV', verified=True, twofa=True,
+                             slugs=['rotterdam-zuid', 'utrecht-oost', 'eindhoven-collection', 'den-haag-building', 'rotterdam-penthouse', 'wassenaar-villa'], preset='buyer', extra=['membership']),
+    'pro@test.nl': dict(name='Priya Pro', investor_type='Family office', company_name='Delta Holding BV', verified=True, pro=True, twofa=True, slugs='all', preset='everything'),
+    'fund@test.nl': dict(name='Ingrid Lund', investor_type='Pension fund', company_name='Nordhavn Pension Partners', country='DK', verified=True, twofa=True,
+                         slugs=['project-tulip', 'project-delta', 'rotterdam-zuid', 'eindhoven-collection', 'utrecht-oost'], preset='institution', buy_box=True),
+    'highrisk@test.nl': dict(name='Oliver Grant', investor_type='Fund', company_name='Brightwater Estates Ltd', country='GB', slugs=['project-tulip'], features=['map']),
+}
+
+
+def _create_people():
+    from app import db
+    from app.db import T
+    from app.common import hash_password
+    from app.domain import new_totp_secret, preset
+    from app.routers.access import set_listings
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    slugs = {l['slug']: l['id'] for l in db.all_(T.listings)}; pw = hash_password('Demo2026!')
+    for email, p in PEOPLE.items():
+        feats = preset(p['preset']) + p.get('extra', []) if 'preset' in p else p['features']
+        u = db.ins(T.users, {'email': email, 'name': p['name'], 'password_hash': pw, 'investor_type': p.get('investor_type', 'Private person'), 'company_name': p.get('company_name'), 'country': p.get('country', 'NL'),
+                             'verified': p.get('verified', False), 'pro': p.get('pro', False), 'twofa_enabled': p.get('twofa', False), 'twofa_secret': new_totp_secret() if p.get('twofa') else None,
+                             'listing_scope': 'all' if p['slugs'] == 'all' else 'selected', 'features': feats, 'account_manager': 'Ada Admin'})
+        if p['slugs'] != 'all': set_listings(u['id'], [slugs[s] for s in p['slugs']], None)
+        if p.get('buy_box'): db.run(pg_insert(T.buy_boxes).values(user_id=u['id'], regions=['Amsterdam', 'Utrecht', 'Rotterdam'], types=['portfolios', 'buildings'], ticket_min=25000000, ticket_max=400000000, target_bar=4.8, financing='cash', strategy='Buy-to-let'))
+
+
 @pytest.fixture(scope='session')
 def app():
     from app.main import app as fastapi_app
-    with TestClient(fastapi_app):  # runs startup: migrations + seed
+    with TestClient(fastapi_app):  # runs startup: migrations + seed (developer, admin, investor)
+        _create_people()
         yield fastapi_app
 
 

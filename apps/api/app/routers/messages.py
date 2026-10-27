@@ -30,6 +30,7 @@ def _threads(investor_id: str | None = None) -> list[dict]:
     stmt = (select(M, L.c.slug.label('_slug'), L.c.name.label('_lname'), U.c.name.label('_iname'), U.c.email.label('_iemail'), U.c.company_name.label('_co'))
             .select_from(M.outerjoin(L, M.c.listing_id == L.c.id).join(U, M.c.investor_id == U.c.id)).order_by(desc(M.c.created_at)))
     if investor_id: stmt = stmt.where(M.c.investor_id == investor_id)
+    else: stmt = stmt.where(U.c.deleted_at.is_(None))  # staff list: active investors only
     out: dict[str, dict] = {}
     for r in db.rows(stmt):
         k = r['investor_id'] + '|' + (r['_slug'] or 'general')

@@ -12,7 +12,11 @@ from .domain import CONFIG_DEFAULTS, RETIRED_ROLES, new_totp_secret, preset
 from .pdf import sample_pdf
 
 DEMO_PASSWORD = 'Demo2026!'
-DEMO_INVITE_TOKEN = 'demo-invite-pieter'
+# The demo has three accounts: developer, admin and one investor. The admin invites every other investor.
+INVESTOR_EMAIL = 'investor@demo.nl'
+INVESTOR = dict(investor_type='Family office', company_name='Delta Holding BV', country='NL', verified=True, pro=True, twofa_enabled=True, twofa_secret=new_totp_secret(), account_manager='Ada Admin', lead_score=80)
+INVESTOR_LISTINGS = ['rotterdam-zuid', 'utrecht-oost', 'amsterdam-canal-house', 'eindhoven-collection', 'project-tulip', 'project-delta']
+BIDDERS = [('hanseatic@demo.nl', 'Jonas Becker', 'Fund', 'DE', 'Hanseatic Wohnen GmbH'), ('alnoor@demo.nl', 'Omar Haddad', 'Family office', 'AE', 'Al Noor Capital'), ('jansen@demo.nl', 'Marieke Jansen', 'Private BV', 'NL', 'M. Jansen Beheer BV')]
 DAY = timedelta(days=1)
 
 LISTINGS = [
@@ -49,17 +53,11 @@ def seed_if_empty() -> bool:
     pw = hash_password(DEMO_PASSWORD)
     mk = lambda email, name, **extra: db.ins(T.users, {'email': email, 'name': name, 'password_hash': pw, **extra})
     mk('admin@demo.nl', 'Ada Admin', role='admin', twofa_enabled=True, twofa_secret=new_totp_secret())
-    mk('free@demo.nl', 'Femke Free', investor_type='Private person')
-    mk('verified@demo.nl', 'Victor Verified', investor_type='Private BV', company_name='Victor Beheer BV', verified=True, twofa_enabled=True, twofa_secret=new_totp_secret(), account_manager='Ada Admin', lead_score=55)
-    pro = mk('pro@demo.nl', 'Priya Pro', investor_type='Family office', company_name='Delta Holding BV', verified=True, pro=True, twofa_enabled=True, twofa_secret=new_totp_secret(), account_manager='Ada Admin', lead_score=80)
-    db.ins(T.subscriptions, {'user_id': pro['id'], 'plan': 'year', 'method': 'iDEAL', 'mollie_payment_id': 'tr_demo_seed', 'current_period_end': t0 + 300 * DAY}, returning=False)
-    bidders = [mk(e, n, investor_type=t, country=c, company_name=co, verified=True, lead_score=60) for e, n, t, c, co in
-               [('hanseatic@demo.nl', 'Jonas Becker', 'Fund', 'DE', 'Hanseatic Wohnen GmbH'), ('alnoor@demo.nl', 'Omar Haddad', 'Family office', 'AE', 'Al Noor Capital'), ('jansen@demo.nl', 'Marieke Jansen', 'Private BV', 'NL', 'M. Jansen Beheer BV')]]
-    pend_a = mk('brightwater@demo.nl', 'Oliver Grant', investor_type='Fund', country='GB', company_name='Brightwater Estates Ltd')
-    pend_b = mk('oranjewal@demo.nl', 'Sophie van Dijk', investor_type='Private BV', company_name='Oranjewal Capital BV')
-    dummy = sample_pdf('Identity document (sample)', 'Uploaded for KYC review', ['Placeholder file for the demo compliance queue.'])
-    db.ins(T.kyc_cases, [{'user_id': pend_a['id'], 'risk': 'high', 'ticket': 8000000, 'kvk': None, 'ubo_name': 'Oliver Grant', 'id_file_key': save_file(dummy, 'id.pdf'), 'id_file_name': 'passport.pdf', 'proof_file_key': save_file(dummy, 'pof.pdf'), 'proof_file_name': 'bank-letter.pdf'},
-                         {'user_id': pend_b['id'], 'risk': 'low', 'ticket': 2000000, 'kvk': '81234567', 'ubo_name': 'Sophie van Dijk', 'id_file_key': save_file(dummy, 'id.pdf'), 'id_file_name': 'id-card.pdf', 'proof_file_key': save_file(dummy, 'pof.pdf'), 'proof_file_name': 'financing-letter.pdf'}], returning=False)
+    inv = mk(INVESTOR_EMAIL, 'Iris Investor', **INVESTOR)
+    db.ins(T.subscriptions, {'user_id': inv['id'], 'plan': 'year', 'method': 'iDEAL', 'mollie_payment_id': 'tr_demo_seed', 'current_period_end': t0 + 300 * DAY}, returning=False)
+    # Other bidders in the bid round and the deal room: external parties shown on bids, not accounts (they cannot log in).
+    bidders = [mk(e, n, investor_type=t, country=c, company_name=co, verified=True, lead_score=60, status='suspended', deleted_at=t0) for e, n, t, c, co in BIDDERS]
+    dummy = sample_pdf('Proof of funds (sample)', 'Uploaded with a bid', ['Placeholder file for the demo bid round.'])
 
     for x in LISTINGS:
         p = db.ins(T.properties, {'address': x['address'], 'postcode': x['postcode'], 'city': x['city'], 'district': x['district'], 'lat': x['lat'], 'lng': x['lng'], 'plot_m2': x.get('plot'), 'area_m2': x['area'], 'build_year': x['year'],
@@ -103,12 +101,12 @@ def seed_if_empty() -> bool:
 def seed_messages():
     """Sample conversation for the messaging demo (only when there are no messages yet)."""
     if db.count(T.messages) > 0: return
-    inv, am, l = db.get(T.users, email='verified@demo.nl'), db.get(T.users, email='admin@demo.nl'), db.get(T.listings, slug='rotterdam-zuid')
+    inv, am, l = db.get(T.users, email=INVESTOR_EMAIL), db.get(T.users, email='admin@demo.nl'), db.get(T.listings, slug='rotterdam-zuid')
     if not inv or not am or not l: return
     t = now() - timedelta(hours=26); h = timedelta(hours=1)
     db.ins(T.messages, [
         {'investor_id': inv['id'], 'listing_id': l['id'], 'sender_id': inv['id'], 'body': 'Hello Ada, are any of the 24 units in Rotterdam-Zuid due for a rent review in the next 12 months?', 'created_at': t, 'read_at': t + h},
-        {'investor_id': inv['id'], 'listing_id': l['id'], 'sender_id': am['id'], 'from_staff': True, 'body': 'Hi Victor, five leases index on 1 July and two mid-rent units can move to market rent after renovation. The rent roll in the data room (Financial folder) shows the dates per unit.', 'created_at': t + 2 * h, 'read_at': t + 3 * h},
+        {'investor_id': inv['id'], 'listing_id': l['id'], 'sender_id': am['id'], 'from_staff': True, 'body': 'Hi Iris, five leases index on 1 July and two mid-rent units can move to market rent after renovation. The rent roll in the data room (Financial folder) shows the dates per unit.', 'created_at': t + 2 * h, 'read_at': t + 3 * h},
         {'investor_id': inv['id'], 'listing_id': l['id'], 'sender_id': inv['id'], 'body': 'Thank you. Could we schedule a viewing next week, ideally Tuesday morning?', 'created_at': t + 20 * h}], returning=False)
 
 
@@ -124,16 +122,14 @@ DEALS = [
 
 
 def seed_institutional():
-    """A qualified fund account, two private deal rooms with a structured sale process, Q&A and indicative bids."""
+    """Two private deal rooms with a structured sale process, Q&A and indicative bids."""
     db.run(pg_insert(T.config).values(_config_rows()).on_conflict_do_nothing())
     if db.get(T.listings, slug='project-tulip'): return
     t0 = now(); iso = lambda d: (t0 + d * DAY).isoformat().replace('+00:00', 'Z')
-    fund = db.get(T.users, email='fund@demo.nl') or db.ins(T.users, {'email': 'fund@demo.nl', 'name': 'Ingrid Lund', 'password_hash': hash_password(DEMO_PASSWORD), 'investor_type': 'Pension fund', 'country': 'DK', 'company_name': 'Nordhavn Pension Partners',
-                                                                      'verified': True, 'twofa_enabled': True, 'twofa_secret': new_totp_secret(), 'account_manager': 'Ada Admin', 'lead_score': 85})
-    db.run(pg_insert(T.buy_boxes).values(user_id=fund['id'], regions=['Amsterdam', 'Utrecht', 'Rotterdam'], types=['portfolios', 'buildings'], ticket_min=25000000, ticket_max=400000000, target_bar=4.8, financing='cash', strategy='Buy-to-let').on_conflict_do_nothing())
+    inv = db.get(T.users, email=INVESTOR_EMAIL)
+    if inv: db.run(pg_insert(T.buy_boxes).values(user_id=inv['id'], regions=['Amsterdam', 'Utrecht', 'Rotterdam'], types=['portfolios', 'buildings'], ticket_min=25000000, ticket_max=400000000, target_bar=4.8, financing='cash', strategy='Buy-to-let').on_conflict_do_nothing())
     bidders = db.all_(T.users, T.users.c.email.in_(['hanseatic@demo.nl', 'alnoor@demo.nl']))
     bidders.sort(key=lambda u: ['hanseatic@demo.nl', 'alnoor@demo.nl'].index(u['email']))
-    pro = db.get(T.users, email='pro@demo.nl')
     for x in DEALS:
         units = []; rent = area = 0
         for i in range(1, x['units'] + 1):
@@ -171,23 +167,12 @@ def seed_institutional():
                 {'listing_id': l['id'], 'category': 'Process', 'question': 'Is the vendor open to a share deal instead of an asset deal?', 'answer': 'The vendor prefers a share deal (SPV with fiscal unity ending at closing). Asset-deal bids are accepted but will be compared on a net basis including transfer tax.', 'answered_by': 'Capital Markets team', 'answered_at': t0 - 2 * DAY, 'created_at': t0 - 2 * DAY - timedelta(hours=3)},
             ]
             db.ins(T.qa_items, qa, returning=False)
-            if pro: db.ins(T.qa_items, {'listing_id': l['id'], 'user_id': pro['id'], 'category': 'Financial', 'question': 'What indexation was applied to the free-sector leases in 2025 and 2026?'}, returning=False)
+            if inv: db.ins(T.qa_items, {'listing_id': l['id'], 'user_id': inv['id'], 'category': 'Financial', 'question': 'What indexation was applied to the free-sector leases in 2025 and 2026?'}, returning=False)
     db.ins(T.automation_log, {'rule': 'system', 'text': 'Private deal rooms added: Project Tulip, Project Delta'}, returning=False)
 
 
-# Invite-only access for the demo accounts: who sees which properties and features (only people whose access was never set).
-ACCESS = [
-    ('free@demo.nl', ['rotterdam-zuid', 'utrecht-oost', 'amsterdam-canal-house'], ['map', 'analysis', 'messages']),
-    ('verified@demo.nl', ['rotterdam-zuid', 'utrecht-oost', 'eindhoven-collection', 'den-haag-building', 'rotterdam-penthouse', 'wassenaar-villa'], preset('buyer') + ['membership']),
-    ('pro@demo.nl', 'all', preset('everything')),
-    ('fund@demo.nl', ['project-tulip', 'project-delta', 'rotterdam-zuid', 'eindhoven-collection', 'utrecht-oost'], preset('institution')),
-    ('hanseatic@demo.nl', ['project-tulip', 'project-delta'], preset('institution')), ('alnoor@demo.nl', ['project-tulip', 'project-delta'], preset('institution')),
-    ('jansen@demo.nl', ['eindhoven-collection', 'rotterdam-zuid'], preset('buyer')), ('brightwater@demo.nl', ['project-tulip'], preset('viewer')), ('oranjewal@demo.nl', ['utrecht-oost', 'den-haag-building'], preset('viewer')),
-]
-
-
 def seed_access():
-    from .routers.access import new_invite, set_listings
+    from .routers.access import set_listings
     users = {u['email']: u for u in db.all_(T.users)}; slugs = {l['slug']: l['id'] for l in db.all_(T.listings)}; admin = users.get('admin@demo.nl'); aid = admin['id'] if admin else None
     # Three kinds of user only: accounts with an earlier staff role (sales, compliance, acquisition, ...) are deactivated,
     # not erased, so their history (messages, decisions, audit log) stays intact.
@@ -196,16 +181,10 @@ def seed_access():
             db.upd(T.users, T.users.c.id == u['id'], {'deleted_at': now(), 'status': 'suspended'}); db.run(T.sessions.delete().where(T.sessions.c.user_id == u['id']))
     if 'developer@demo.nl' not in users:
         db.ins(T.users, {'email': 'developer@demo.nl', 'name': 'Dev Patel', 'password_hash': hash_password(DEMO_PASSWORD), 'role': 'developer', 'twofa_enabled': True, 'twofa_secret': new_totp_secret(), 'access_updated_at': now()}, returning=False)
-    for email, listings, features in ACCESS:
-        u = users.get(email)
-        if not u or u['access_updated_at']: continue
-        db.upd(T.users, T.users.c.id == u['id'], {'listing_scope': 'all' if listings == 'all' else 'selected', 'features': features, 'access_updated_at': now(), 'invited_by': aid})
-        if listings != 'all': set_listings(u['id'], [slugs[s] for s in listings if s in slugs], aid)
-    if 'pieter@demo.nl' not in users:  # an invitation that is still waiting, with a known demo link: /invite/demo-invite-pieter
-        u = db.ins(T.users, {'email': 'pieter@demo.nl', 'name': 'Pieter de Vries', 'company_name': 'Oranje Woonfonds', 'investor_type': 'Fund', 'status': 'invited', 'password_hash': 'invited$demo', 'listing_scope': 'selected',
-                             'features': preset('buyer'), 'invited_by': aid, 'access_updated_at': now(), 'account_manager': 'Ada Admin'})
-        set_listings(u['id'], [slugs[s] for s in ['rotterdam-zuid', 'utrecht-oost', 'eindhoven-collection'] if s in slugs], aid)
-        new_invite(u['id'], aid, 30, 'As discussed on the phone: three residential assets that fit your Randstad mandate.', DEMO_INVITE_TOKEN)
+    inv = users.get(INVESTOR_EMAIL)
+    if inv and not inv['access_updated_at']:  # the demo investor: six properties incl. both private deal rooms, every feature
+        db.upd(T.users, T.users.c.id == inv['id'], {'listing_scope': 'selected', 'features': preset('everything'), 'access_updated_at': now(), 'invited_by': aid})
+        set_listings(inv['id'], [slugs[s] for s in INVESTOR_LISTINGS if s in slugs], aid)
     if not db.get(T.enquiries, kind='access'):
         t0 = now()
         db.ins(T.enquiries, [

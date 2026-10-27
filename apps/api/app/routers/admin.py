@@ -299,7 +299,7 @@ def patch_listing(request: Request, id: str, body=Depends(json_body)):
 @router.get('/kyc')
 def kyc(request: Request):
     require_staff(request); K, U = T.kyc_cases, T.users
-    rs = db.rows(select(K, U.c.name.label('_n'), U.c.email.label('_e'), U.c.investor_type.label('_t'), U.c.country.label('_c')).select_from(K.join(U, K.c.user_id == U.c.id)).order_by(desc(K.c.created_at)))
+    rs = db.rows(select(K, U.c.name.label('_n'), U.c.email.label('_e'), U.c.investor_type.label('_t'), U.c.country.label('_c')).select_from(K.join(U, K.c.user_id == U.c.id)).where(U.c.deleted_at.is_(None)).order_by(desc(K.c.created_at)))
     return [{'id': r['id'], 'name': r['_n'], 'email': r['_e'], 'type': r['_t'], 'country': r['_c'], 'status': r['status'], 'risk': r['risk'], 'pep': r['pep'], 'kvk': r['kvk'], 'ubo': r['ubo_name'], 'ticket': r['ticket'],
              'idFileName': r['id_file_name'], 'proofFileName': r['proof_file_name'], 'submittedAt': r['created_at'], 'decidedAt': r['decided_at'], 'notes': r['notes'],
              'checks': f"ID uploaded · liveness confirmed · sanctions screening clear (simulated){' · KVK ' + r['kvk'] if r['kvk'] else ''}{' · UBO ' + r['ubo_name'] if r['ubo_name'] else ''}"} for r in rs]

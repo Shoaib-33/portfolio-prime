@@ -26,19 +26,15 @@ Reset the demo database: stop the server, then `npm run seed -- --reset`.
 
 Password for all: `Demo2026!`. One-click buttons are on the login page. Accounts with two-factor login show the current code in demo mode.
 
-Three kinds of user:
+Three accounts, one per kind of user:
 
 | Account | Role | What it can do |
 |---|---|---|
 | developer@demo.nl | Developer | Everything, including the CRM & API settings and creating admin or developer accounts |
 | admin@demo.nl | Admin | Runs the staff workspace and invites investors, choosing per person which properties and features they see |
-| free@demo.nl | Investor | 3 shared properties; map, analysis and messages switched on |
-| verified@demo.nl | Investor | Verified buyer: 6 properties; NDA, data room, offers, bid round (2FA on) |
-| pro@demo.nl | Investor | All properties (including future ones) and every feature |
-| fund@demo.nl | Investor | Pension fund: private deal rooms, sale process, bids, Q&A, IC memo, AI analyst |
-| /invite/demo-invite-pieter | Investor (invited) | A pending invitation to try the activation flow |
+| investor@demo.nl | Investor | Verified Investor Pro: 6 shared properties (including both private deal rooms) and every feature |
 
-Investors cannot sign up themselves; an admin (or developer) creates their account and sends a personal invitation link. Accounts with the earlier staff roles (sales, compliance, acquisition) are deactivated at start-up; their history stays in the database.
+Every other investor joins through an invitation the admin creates in *People & access*; there is no self-registration. Databases from earlier versions are upgraded once (`migrations/0005_three_accounts.sql`): pro@demo.nl becomes investor@demo.nl and the other demo investors and earlier staff accounts are deactivated, with their history kept.
 
 ## Architecture
 
