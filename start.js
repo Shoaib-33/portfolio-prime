@@ -15,7 +15,15 @@ function python() {
   return process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 }
 const children = [];
-const stop = code => { for (const c of children) c.kill(); process.exit(code); };
+/** Local demo only: stop the embedded PostgreSQL cleanly (on Windows the API is killed without running its own shutdown). */
+function stopLocalDb() {
+  const data = path.join(API_DIR, 'data', 'pg');
+  if (process.env.DATABASE_URL || !fs.existsSync(path.join(data, 'postmaster.pid'))) return;
+  const site = [path.join(API_DIR, '.venv', 'Lib', 'site-packages'), ...(fs.existsSync(path.join(API_DIR, '.venv', 'lib')) ? fs.readdirSync(path.join(API_DIR, '.venv', 'lib')).map(d => path.join(API_DIR, '.venv', 'lib', d, 'site-packages')) : [])];
+  const pgCtl = site.map(s => path.join(s, 'pgserver', 'pginstall', 'bin', process.platform === 'win32' ? 'pg_ctl.exe' : 'pg_ctl')).find(p => fs.existsSync(p));
+  if (pgCtl) require('child_process').spawnSync(pgCtl, ['stop', '-D', data, '-m', 'fast', '-w', '-t', '30'], { stdio: 'ignore' });
+}
+const stop = code => { for (const c of children) c.kill(); stopLocalDb(); process.exit(code); };
 for (const s of ['SIGTERM', 'SIGINT']) process.on(s, () => stop(0));
 
 const api = spawn(python(), ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '4000', '--log-level', 'warning'], { cwd: API_DIR, stdio: 'inherit', env: process.env });

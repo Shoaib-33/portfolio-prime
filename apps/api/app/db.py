@@ -1,12 +1,12 @@
 """Database connection, migrations and small query helpers.
 
 - DATABASE_URL set (Render, production): regular PostgreSQL.
-- Otherwise (local demo): an embedded PostgreSQL 16 started with `pgserver` in ./data/pg (nothing to install).
+- Otherwise (local demo): an embedded PostgreSQL 16 in ./data/pg, using the binaries from the `pgserver` package (nothing to install).
 The schema lives in plain SQL migrations (./migrations). The runner is compatible with the migration history table the
 earlier Node.js backend wrote ("drizzle"."__drizzle_migrations"), so existing databases continue without changes.
 """
 from __future__ import annotations
-import hashlib, json, os, re, tempfile, uuid
+import hashlib, json, os, re, shutil, socket, subprocess, tempfile, time, uuid
 from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Iterable
@@ -46,15 +46,68 @@ def _url() -> str:
     global _pg
     url = os.environ.get('DATABASE_URL')
     if not url:
-        import pgserver  # local demo only
-        folder = Path(tempfile.mkdtemp(prefix='pp-test-')) if os.environ.get('PP_MEMORY_DB') else DATA_DIR / 'pg'
-        folder.mkdir(parents=True, exist_ok=True)
-        _pg = pgserver.get_server(str(folder), cleanup_mode='delete' if os.environ.get('PP_MEMORY_DB') else 'stop')
-        url = _pg.get_uri()
+        url = _embedded()
     url = re.sub(r'^postgres(ql)?(\+\w+)?://', 'postgresql+psycopg://', url)
     if os.environ.get('PGSSL') == '1' and 'sslmode' not in url:
         url += ('&' if '?' in url else '?') + 'sslmode=require'
     return url
+
+
+def _bin(name: str) -> str:
+    from pgserver._commands import POSTGRES_BIN_PATH  # PostgreSQL 16 binaries shipped in the pgserver wheel
+    return str(Path(POSTGRES_BIN_PATH) / (name + ('.exe' if os.name == 'nt' else '')))
+
+
+def _alive(pid: int) -> bool:
+    if os.name == 'nt':
+        out = subprocess.run(['tasklist', '/FI', f'PID eq {pid}', '/NH'], capture_output=True, text=True).stdout
+        return 'postgres' in out.lower()
+    try: os.kill(pid, 0); return True
+    except OSError: return False
+
+
+def _running_port(folder: Path) -> int | None:
+    """Port of a PostgreSQL already serving this data folder (for example left running after a hard stop of the API).
+    A server that is still recovering is waited for; a leftover pid file without a live server counts as stale."""
+    pid_file = folder / 'postmaster.pid'
+    try: lines = pid_file.read_text().splitlines(); pid, port = int(lines[0]), int(lines[3])
+    except (IndexError, ValueError, OSError): return None
+    for _ in range(90):
+        if not _alive(pid): return None
+        if subprocess.run([_bin('pg_isready'), '-h', '127.0.0.1', '-p', str(port), '-t', '2'], capture_output=True).returncode == 0: return port
+        time.sleep(1)
+    raise RuntimeError(f'A database server (process {pid}) holds {folder} but does not respond. Stop it in Task Manager, then try again.')
+
+
+def _embedded() -> str:
+    """Local demo database: PostgreSQL 16 in ./data/pg (binaries from the pgserver package, nothing to install).
+    The server log lives next to the folder, not inside it (on Windows crash recovery cannot sync a log file the server
+    holds open), fsync is off (a local demo copy, often stopped with Ctrl+C), and a server still running from an
+    earlier run is reused instead of started twice."""
+    global _pg
+    temp = bool(os.environ.get('PP_MEMORY_DB'))
+    folder = Path(tempfile.mkdtemp(prefix='pp-test-')) / 'pg' if temp else DATA_DIR / 'pg'
+    log = folder.parent / 'postgres.log'
+    if not (folder / 'PG_VERSION').exists():
+        folder.mkdir(parents=True, exist_ok=True)
+        subprocess.run([_bin('initdb'), '-D', str(folder), '-U', 'postgres', '--auth=trust', '-E', 'UTF8', '--no-sync'], check=True, capture_output=True)
+    conf = folder / 'postgresql.conf'
+    if 'Portfolio & Prime' not in conf.read_text(encoding='utf-8', errors='ignore'):
+        with conf.open('a', encoding='utf-8') as f:
+            f.write("\n# Portfolio & Prime local demo\nfsync = off\nfull_page_writes = off\nsynchronous_commit = off\n"
+                    "listen_addresses = '127.0.0.1'\nunix_socket_directories = ''\n")
+    port = _running_port(folder)
+    if port is None:
+        (folder / 'postmaster.pid').unlink(missing_ok=True)  # stale after a hard stop
+        with socket.socket() as s:
+            s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
+        # no output capture: on Windows the server inherits pg_ctl's handles and a pipe would never close
+        r = subprocess.run([_bin('pg_ctl'), 'start', '-D', str(folder), '-l', str(log), '-w', '-t', '180', '-o', f'-p {port}'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if r.returncode != 0:
+            tail = log.read_text(encoding='utf-8', errors='ignore')[-800:] if log.exists() else ''
+            raise RuntimeError(f'The local database in {folder} did not start. Close other copies of the app and try again.\n{tail}')
+        _pg = {'folder': folder, 'temp': temp}
+    return f'postgresql://postgres@127.0.0.1:{port}/postgres'
 
 
 def engine() -> Engine:
@@ -71,9 +124,9 @@ def close():
     global _engine, _pg
     if _engine is not None:
         _engine.dispose(); _engine = None
-    if _pg is not None:
-        try: _pg.cleanup()
-        except Exception: pass
+    if _pg is not None:  # stop the local database we started (cleanly, so the next start needs no recovery)
+        subprocess.run([_bin('pg_ctl'), 'stop', '-D', str(_pg['folder']), '-m', 'fast', '-w', '-t', '60'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if _pg['temp']: shutil.rmtree(_pg['folder'].parent, ignore_errors=True)
         _pg = None
 
 
