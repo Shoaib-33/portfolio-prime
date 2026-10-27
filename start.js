@@ -1,21 +1,35 @@
-/* Runs the API and the website as one service (used on Render's free plan, 512 MB memory).
-   The API runs inside this process on 127.0.0.1:4000; the website runs as a child process on $PORT (public)
-   and reaches the API only through its /api proxy. */
+/* Runs the API (FastAPI, Python) and the website (Next.js) as one service: used locally and on Render.
+   The API listens on 127.0.0.1:4000 and is reached only through the website's /api proxy; the website runs on $PORT (public). */
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+const http = require('http');
+
 process.env.NODE_ENV = 'production';
 const PORT = process.env.PORT || '3000';
+const API_DIR = path.join(__dirname, 'apps', 'api');
 
-require('./apps/api/dist/main.js').createApp()
-  .then(app => app.listen(4000, '127.0.0.1'))
-  .then(() => {
-    console.log(`API ready. Starting website on port ${PORT}.`);
-    const next = require.resolve('next/dist/bin/next', { paths: [path.join(__dirname, 'apps/web')] });
-    const web = spawn(process.execPath, ['--max-old-space-size=160', next, 'start', '-p', PORT, '-H', '0.0.0.0'], {
-      cwd: path.join(__dirname, 'apps/web'), stdio: 'inherit',
-      env: { ...process.env, API_URL: 'http://127.0.0.1:4000' },
-    });
-    web.on('exit', code => { console.error(`Website exited with code ${code}; stopping.`); process.exit(code || 1); });
-    for (const s of ['SIGTERM', 'SIGINT']) process.on(s, () => { web.kill(); process.exit(0); });
-  })
-  .catch(err => { console.error('API failed to start', err); process.exit(1); });
+/** Python from the project's virtual environment (created by `npm run setup:api` or the Render build), else PYTHON or the system one. */
+function python() {
+  for (const p of [path.join(API_DIR, '.venv', 'Scripts', 'python.exe'), path.join(API_DIR, '.venv', 'bin', 'python')]) if (fs.existsSync(p)) return p;
+  return process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+}
+const children = [];
+const stop = code => { for (const c of children) c.kill(); process.exit(code); };
+for (const s of ['SIGTERM', 'SIGINT']) process.on(s, () => stop(0));
+
+const api = spawn(python(), ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '4000', '--log-level', 'warning'], { cwd: API_DIR, stdio: 'inherit', env: process.env });
+children.push(api);
+api.on('exit', code => { console.error(`API exited with code ${code}; stopping.`); stop(code || 1); });
+
+const ready = (tries = 0) => http.get('http://127.0.0.1:4000/api/health', res => { res.resume(); res.statusCode === 200 ? startWeb() : retry(tries); }).on('error', () => retry(tries));
+const retry = tries => tries > 180 ? (console.error('API did not start in time.'), stop(1)) : setTimeout(() => ready(tries + 1), 1000);
+
+function startWeb() {
+  console.log(`API ready (FastAPI). Starting website on port ${PORT}.`);
+  const next = require.resolve('next/dist/bin/next', { paths: [path.join(__dirname, 'apps/web')] });
+  const web = spawn(process.execPath, ['--max-old-space-size=160', next, 'start', '-p', PORT, '-H', '0.0.0.0'], { cwd: path.join(__dirname, 'apps/web'), stdio: 'inherit', env: { ...process.env, API_URL: 'http://127.0.0.1:4000' } });
+  children.push(web);
+  web.on('exit', code => { console.error(`Website exited with code ${code}; stopping.`); stop(code || 1); });
+}
+ready();

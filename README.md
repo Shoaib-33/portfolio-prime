@@ -4,22 +4,23 @@ Phase 1 (MVP) of the *Dutch Investor Property Platform: Product & Technical Plan
 
 ## Run it
 
-Requirements: Node.js 20+ (tested on 24). Nothing else to install.
+Requirements: Node.js 20+ (website) and Python 3.10+ (API). No database to install: locally the API starts an embedded PostgreSQL 16 (`pgserver`) in `apps/api/data/pg`.
 
 ```powershell
 cd E:\Property_Investment\platform
-npm install            # first time only
-npm run build          # compiles the API and the website
-start-demo.cmd         # starts the API (port 4000) and the website (port 3000)
+npm install            # website packages (first time only)
+npm run setup:api      # Python virtual environment apps/api/.venv + API packages (first time only)
+npm run build          # builds the website
+npm start              # starts the API (FastAPI, port 4000) and the website (port 3000)
 ```
 
-Open http://localhost:3000. Or start the two parts yourself: `npm run dev:api` and, in a second window, `npm run start -w apps/web`.
+Open http://localhost:3000. Or double-click `start-demo.cmd`. During development run the two parts yourself: `npm run dev:api` (uvicorn with auto-reload) and `npm run dev:web`. The API documentation (OpenAPI/Swagger) is at http://localhost:4000/api/docs.
 
-Reset the demo database: `npm run seed -- --reset` (from `apps/api`) while the API is stopped.
+Reset the demo database: stop the server, then `npm run seed -- --reset`.
 
 ## Deploy on Render (free)
 
-`render.yaml` creates a free PostgreSQL database and one free web service in Frankfurt (`node start.js` runs the website and API together). In Render: **New + › Blueprint** › pick this repository › **Deploy Blueprint**. Free services sleep after ~15 minutes idle; free databases expire after a limited period. Search engines are blocked for the demo; set `PP_INDEX=1` (and `SITE_URL`) on the production site to allow indexing.
+`render.yaml` creates a free PostgreSQL database and one free web service in Frankfurt (`node start.js` runs the website and the Python API together; the build installs Python 3.12 with `uv` inside the project folder, see `scripts/render-build.sh`). In Render: **New + › Blueprint** › pick this repository › **Deploy Blueprint**. Free services sleep after ~15 minutes idle; free databases expire after a limited period. Search engines are blocked for the demo; set `PP_INDEX=1` (and `SITE_URL`) on the production site to allow indexing.
 
 ## Demo accounts
 
@@ -43,14 +44,14 @@ Password for all: `Demo2026!`. One-click buttons are on the login page. Accounts
 | Layer | Used here | Plan | Notes |
 |---|---|---|---|
 | Website | Next.js 15, React 19, TypeScript | Next.js | Server-rendered; the browser only talks to the website, `/api/*` is proxied to the API |
-| API | NestJS 11, TypeScript, zod validation | NestJS | Controllers per domain: public, account, deals, admin; background jobs service |
-| Database | Local: PostgreSQL via **PGlite** (in `apps/api/data`). With `DATABASE_URL` set (Render): regular PostgreSQL via node-postgres. Drizzle ORM | PostgreSQL 16 + PostGIS, Prisma/Drizzle | Same schema and migrations for both. PGlite needs ~600 MB while starting; the PostgreSQL mode runs the whole app in ~200 MB |
+| API | **FastAPI** (Python 3.10+), Pydantic v2 validation, Uvicorn | NestJS | Routers per domain (`apps/api/app/routers`): public, account, deals, admin, messages, institutional, access, integrations; background-jobs thread. OpenAPI docs at `/api/docs` |
+| Database | Local: embedded PostgreSQL 16 (`pgserver`, in `apps/api/data/pg`). With `DATABASE_URL` set (Render): regular PostgreSQL via psycopg 3. SQLAlchemy 2 Core | PostgreSQL 16 + PostGIS | Plain SQL migrations in `apps/api/migrations`, applied at start-up (compatible with the history written by the earlier Node.js API) |
 | Jobs | Table-based queue polled every 30 s | Redis + BullMQ | Closes bid rounds at the deadline; releases off-market listings to verified investors after 48 h |
 | Login | Email + password (scrypt), TOTP 2FA (RFC 6238), httpOnly session cookie, roles | Keycloak / EU IdP | Staff and data rooms always require 2FA |
 | Files | `files` table in the database | S3-compatible EU storage | Survives restarts on hosts without a disk. Data-room PDFs are watermarked per viewer on the server (pdf-lib), behind 5-minute signed links |
 | KYC, Mollie, e-sign, email, BAG | Simulated adapters with the real shapes | Sumsub/Veriff/iDIN, Mollie, Signhost, Brevo/Postmark, Kadaster BAG API | Emails go to the `outbox` table; plug in providers with API keys later |
 
-Access control is enforced in the API (`serializeListing` in `apps/api/src/common.ts`): a visitor's browser never receives the address, exact price, financials or documents.
+Access control is enforced in the API (`serialize_listing` in `apps/api/app/common.py`): a visitor's browser never receives the address, exact price, financials or documents.
 
 ## What version 1 covers (plan Phase 1, plus bid rounds)
 
@@ -60,24 +61,24 @@ Public site, listings with filters (type, city, province, radius around a city o
 
 - **Visitors** see only the public company site (what we do, how access works, anonymised track record, guides) and a *Request access* form. There is no self-registration; `/api/listings`, details, map, market report and all tools answer 401.
 - **Admins and developers** create people in *Staff workspace › People & access*: name, role, the properties they see (a selection, or *all properties* including future CRM listings) and the features switched on (map, smart finder, market report, analysis & memo, AI analyst, data room, private deal rooms, offers & bids, messages, membership, sell to us; presets Viewer / Buyer / Institution / Everything). The invitation link (`/invite/<token>`, single use, 3–30 days, only a hash is stored) lets the person set a password. Admins can change access at any time (effective on the next request), send a new link, revoke it, or pause someone (signed out at once). Access requests from the website appear in the same tab.
-- **Enforcement is on the server**: `canSeeListing` and `hasFeature` in `domain.ts`, loaded per session in `common.ts`; a property that is not shared answers 404, a feature that is off answers 403. Alerts (buy-box matches, price drops) only go to people who can see the property. The web layouts (`components/gate.tsx`) only decide what to show instead of an error.
-- **CRM integration** (`integrations.controller.ts`): the company CRM pushes listings to `POST /api/integrations/crm/listings` with an `x-api-key` (keys created and revoked in *CRM & API*, stored hashed; `PP_CRM_API_KEY` works as a bootstrap key). Upsert by `externalId` (one object or an array of up to 200), optional unit rent roll and `shareWith` emails; `DELETE /api/integrations/crm/listings/:externalId` withdraws. Photos may be `https://` URLs.
+- **Enforcement is on the server**: `can_see_listing` and `has_feature` in `apps/api/app/domain.py`, loaded per session in `app/common.py`; a property that is not shared answers 404, a feature that is off answers 403. Alerts (buy-box matches, price drops) only go to people who can see the property. The web layouts (`apps/web/components/gate.tsx`) only decide what to show instead of an error.
+- **CRM integration** (`app/routers/integrations.py`): the company CRM pushes listings to `POST /api/integrations/crm/listings` with an `x-api-key` (keys created and revoked in *CRM & API*, stored hashed; `PP_CRM_API_KEY` works as a bootstrap key). Upsert by `externalId` (one object or an array of up to 200), optional unit rent roll and `shareWith` emails; `DELETE /api/integrations/crm/listings/:externalId` withdraws. Photos may be `https://` URLs.
 
 ## Institutional layer
 
-- **Private deal rooms** (`dealType: institutional`, e.g. Project Tulip, 860 homes; Project Delta, build-to-rent forward funding): codename teaser for everyone, details only for verified funds, family offices, pension funds and insurers (`isQualified` in `domain.ts`).
+- **Private deal rooms** (`dealType: institutional`, e.g. Project Tulip, 860 homes; Project Delta, build-to-rent forward funding): codename teaser for everyone, details only for verified funds, family offices, pension funds and insurers (`is_qualified` in `app/domain.py`).
 - **Structured sale process** (`sale_processes`, `qa_items`): teaser & NDA → IM → indicative bids → shortlist (top 3, automatic) → full data room → final binding bids → SPA. Minimum ticket from the config table; anonymised Q&A log; staff run it from *Deal processes* in the workspace (only admin and sales see bid amounts).
-- **Analysis tab** (`analytics.ts`, `analysis.service.ts`): automated valuation and comparables, 10-year DCF with IRR and stress tests, WWS rent-regulation exposure per unit (Wet betaalbare huur; thresholds in the config table), ESG (labels, energy intensity, CO₂, EU Taxonomy, capex to label B), due-diligence flags. Unit-level parts need verification and the property NDA.
-- **AI analyst** (`ai.ts`, `POST /api/ai/ask`, `/analyst` and the listing's *Ask the AI analyst* tab): answers only from the viewer's analysis pack, with sources; scenarios run through the server calculators; never recommends buying. Set `ANTHROPIC_API_KEY` (optional `PP_AI_MODEL`, default `claude-opus-5-5`) to use Claude; without a key a built-in analyst engine answers. 30 questions per user per hour; questions are logged in `ai_logs`.
+- **Analysis tab** (`app/analytics.py`, `app/services/analysis.py`): automated valuation and comparables, 10-year DCF with IRR and stress tests, WWS rent-regulation exposure per unit (Wet betaalbare huur; thresholds in the config table), ESG (labels, energy intensity, CO₂, EU Taxonomy, capex to label B), due-diligence flags. Unit-level parts need verification and the property NDA.
+- **AI analyst** (`app/ai.py`, `POST /api/ai/ask`, `/analyst` and the listing's *Ask the AI analyst* tab): answers only from the viewer's analysis pack, with sources; scenarios run through the server calculators; never recommends buying. Set `ANTHROPIC_API_KEY` (optional `PP_AI_MODEL`, default `claude-opus-5-5`) to use Claude; without a key a built-in analyst engine answers. 30 questions per user per hour; questions are logged in `ai_logs`.
 - **IC memo**: `GET /api/listings/:slug/memo`, a watermarked PDF draft for verified investors.
 - **Mandate matching**: fit score per listing against the buy box on *My account*.
 - **Reach**: English and German investor guides (`/invest-in-dutch-real-estate`, `/de/immobilien-investment-niederlande`) with FAQ markup and hreflang, `/market-report` (Dataset markup), `/llms.txt` for AI search engines, all in the sitemap.
 
-Market benchmarks and comparable transactions are fictional demo data (`MARKET`, `COMPS` in `analytics.ts`); production connects a transaction-data feed. WWS points are an indicative estimate.
+Market benchmarks and comparable transactions are fictional demo data (`MARKET`, `COMPS` in `app/analytics.py`); production connects a transaction-data feed. WWS points are an indicative estimate.
 
 ## Tests
 
-`npm test` (from `platform/`) runs 28 tests: business rules (tiers, off-market timing, BAR/NAR, KYC risk, matching, RFC 6238 TOTP vectors, IRR and scenarios, WWS points, ESG, valuation, flags, mandate fit) and end-to-end API tests on a fresh in-memory database (no leaks to visitors, watermarked links bound to the user, offer → deal, bid rounds, roles, KYC, map points and radius search, messaging privacy and roles, private deal rooms and sale process, analysis, memo and AI analyst access levels, invite-only access: invitations, per-person properties and features, pausing, and the CRM API).
+`npm test` (from `platform/`) runs 28 pytest tests on a fresh embedded database: business rules (tiers, off-market timing, BAR/NAR, KYC risk, matching, RFC 6238 TOTP vectors, IRR and scenarios, WWS points, ESG, valuation, flags, mandate fit) and end-to-end API tests on a fresh in-memory database (no leaks to visitors, watermarked links bound to the user, offer → deal, bid rounds, roles, KYC, map points and radius search, messaging privacy and roles, private deal rooms and sale process, analysis, memo and AI analyst access levels, invite-only access: invitations, per-person properties and features, pausing, and the CRM API).
 
 ## Before real investors use it
 

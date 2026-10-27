@@ -1,5 +1,5 @@
 # Render blueprint (free plan, Frankfurt / EU):
-# - one web service running the website and the API together (start.js)
+# - one web service running the website (Next.js) and the API (FastAPI, Python) together (start.js)
 # - one free PostgreSQL database; data and uploaded files are stored there, so they survive restarts.
 # Free web services sleep after ~15 minutes idle (first visit then takes up to a minute).
 # Render's free PostgreSQL databases expire after a limited period; check the Render dashboard.

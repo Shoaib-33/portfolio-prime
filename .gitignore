@@ -6,3 +6,8 @@ apps/api/storage/
 .env
 *.log
 *.tsbuildinfo
+.venv/
+.python/
+__pycache__/
+*.pyc
+.pytest_cache/

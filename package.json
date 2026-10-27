@@ -2,15 +2,15 @@
   "name": "portfolio-prime-platform",
   "private": true,
   "workspaces": [
-    "apps/api",
     "apps/web"
   ],
   "scripts": {
-    "dev:api": "npm run dev -w apps/api",
+    "setup:api": "node scripts/setup-api.js",
+    "dev:api": "node scripts/py.js -m uvicorn app.main:app --reload --port 4000",
     "dev:web": "npm run dev -w apps/web",
-    "build": "npm run build -w apps/api && npm run build -w apps/web",
-    "test": "npm test -w apps/api",
-    "seed": "npm run seed -w apps/api",
+    "build": "npm run build -w apps/web && node scripts/build-api.js",
+    "test": "node scripts/py.js -m pytest -q -p no:cacheprovider",
+    "seed": "node scripts/py.js -m app.seed",
     "start": "node start.js"
   },
   "engines": {
