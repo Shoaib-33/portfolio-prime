@@ -169,3 +169,5 @@
   .sel-bar span{margin-left:auto;font-weight:600;color:#e8d6bb}
   .composer{scroll-margin-top:16px}
 }
+.find-btn{gap:8px!important;white-space:nowrap;min-height:36px!important;padding:8px 14px!important}
+.find-btn .ic{margin-right:0!important;width:15px;height:15px}
