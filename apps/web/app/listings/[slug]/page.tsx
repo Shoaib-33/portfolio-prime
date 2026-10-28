@@ -60,7 +60,7 @@ function Investment({ l }: { l: any }) {
 async function Units(l: any, me: Me) {
   const r = await api(`/listings/${l.slug}/units`);
   if (!r.ok) return <AccessGate l={l} me={me} title="The unit-level rent roll." text="Unit rents open after verification and the property NDA." />;
-  return <><p className="eyebrow">RENT ROLL · TENANT DATA REDACTED</p><h2>Every unit.</h2><div className="table-wrap" tabIndex={0} role="region" aria-label="Table"><table><thead><tr><th>Unit</th><th>Area</th><th>Label</th><th>Rent type</th><th>Rent / month</th><th>Status</th><th>Unit price</th></tr></thead><tbody>{r.data.map(x => <tr key={x.ref}><td>{x.ref}</td><td>{x.areaM2} m²</td><td>{x.energyLabel}</td><td>{x.rentType}</td><td>{money(x.rentMonthly)}</td><td>{x.occupancy}</td><td>{money(x.unitPrice)}</td></tr>)}</tbody></table></div></>;
+  return <><p className="eyebrow">RENT ROLL · TENANT DATA REDACTED</p><h2>Every unit.</h2><div className="table-wrap" tabIndex={0}><table><thead><tr><th>Unit</th><th>Area</th><th>Label</th><th>Rent type</th><th>Rent / month</th><th>Status</th><th>Unit price</th></tr></thead><tbody>{r.data.map(x => <tr key={x.ref}><td>{x.ref}</td><td>{x.areaM2} m²</td><td>{x.energyLabel}</td><td>{x.rentType}</td><td>{money(x.rentMonthly)}</td><td>{x.occupancy}</td><td>{money(x.unitPrice)}</td></tr>)}</tbody></table></div></>;
 }
 async function DataRoom(l: any, me: Me) {
   const u = me.user; if (!u || !u.verified || !l.hasNda || !u.twofaEnabled || !u.twofaPassed) return <AccessGate l={l} me={me} title="The data room." text="Legal, technical, financial and zoning documents. Every view is watermarked with your name and logged." />;

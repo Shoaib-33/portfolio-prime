@@ -66,3 +66,10 @@ td small,.document-row small{font-size:11px}
   .header nav .lang-toggle,.header nav .account-btn,.header nav .icon-link{align-self:flex-start;margin-top:10px}
   .header nav .btn{margin-top:10px}
 }
+
+/* Absolutely placed helpers (sr-only) stay inside the table's scroll box */
+.table-wrap{position:relative}
+/* Last contrast near-misses (4.4 → above 4.5) */
+:root{--ok:#28694a}
+.eyebrow{color:#4f6357}
+.code,pre.code,.people-list{outline-offset:2px}

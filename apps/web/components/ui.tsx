@@ -53,6 +53,6 @@ export function TierCards({ me, compact, pro }: { me: Me; compact?: boolean; pro
     {k === cur ? <span className="pill">Your level</span> : k === 'free' && cur === 'visitor' ? <Link className="btn small navy" href="/#request">Join free</Link> : k === 'verified' && cur === 'free' ? <Link className="btn small navy" href="/account/verify">Get verified</Link> : k === 'pro' && cur === 'verified' ? <Link className="btn small brass" href="/account/upgrade">Upgrade to Pro</Link> : null}</div>)}</div>;
 }
 export function SoldTable({ rows }: { rows: any[] }) {
-  return <div className="table-wrap" tabIndex={0} role="region" aria-label="Table"><table className="sold-table"><thead><tr><th>City</th><th>Type</th><th>Units</th><th>Price band</th><th>Deal</th><th>Days to offer</th></tr></thead><tbody>{rows.map((x, i) => <tr key={i}><td>{x.city}</td><td>{x.propertyType}</td><td>{x.units}</td><td>{x.priceBand}</td><td>{DEAL[x.dealType]}</td><td>{x.daysToOffer}</td></tr>)}</tbody></table></div>;
+  return <div className="table-wrap" tabIndex={0}><table className="sold-table"><thead><tr><th>City</th><th>Type</th><th>Units</th><th>Price band</th><th>Deal</th><th>Days to offer</th></tr></thead><tbody>{rows.map((x, i) => <tr key={i}><td>{x.city}</td><td>{x.propertyType}</td><td>{x.units}</td><td>{x.priceBand}</td><td>{DEAL[x.dealType]}</td><td>{x.daysToOffer}</td></tr>)}</tbody></table></div>;
 }
 export const Shield = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z" /><path d="M9 12l2 2 4-4" /></svg>;
