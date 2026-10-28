@@ -150,11 +150,12 @@ async function Buyers(sp: Record<string, string | undefined>) {
 }
 
 async function FindBuyers(id: string, lang: 'nl' | 'en') {
-  const [r, o] = await Promise.all([api(`/admin/buyers/match/${id}?lang=${lang}&limit=200`), api('/admin/buyers')]); if (!r.ok) return <Denied r={r} />; const l = r.data.listing;
+  const [r, o, ac] = await Promise.all([api(`/admin/buyers/match/${id}?lang=${lang}&limit=200`), api('/admin/buyers'), api('/admin/access')]); if (!r.ok) return <Denied r={r} />; const l = r.data.listing;
+  const access = ac.ok ? { listings: ac.data.listings.filter((x: any) => !['sold', 'withdrawn', 'draft'].includes(x.status)), features: ac.data.features, presets: ac.data.presets } : { listings: [], features: [], presets: [] };
   return <div className="buyers">
     <div className="access-top"><div><p className="eyebrow"><Link href="/admin?tab=buyers">BUYERS</Link> · POTENTIAL BUYERS</p><h2>{l.name}</h2><p className="muted-small">{l.city} · {l.propertyType}{l.units > 1 ? ` · ${l.units} units` : ''} · {l.priceOnRequest ? 'price on request' : moneyShort(l.askingPrice)} · {l.status.replace('_', ' ')} · <Link href={`/listings/${l.slug}`}>open listing ↗</Link></p></div>
       {o.ok && <ListingSwitch listings={o.data.listings} current={l.id} />}</div>
-    <BuyerFinder key={lang} data={r.data} lang={lang} />
+    <BuyerFinder key={lang} data={r.data} lang={lang} access={access} />
   </div>;
 }
 
@@ -203,6 +204,7 @@ async function Campaign(id: string) {
   return <div className="buyers">
     <div className="access-top"><div><p className="eyebrow"><Link href="/admin?tab=outreach">OUTREACH</Link> · {c.language.toUpperCase()} · {dateTime(c.createdAt)}</p><h2>{c.listing}</h2><p className="muted-small">{c.subject} · by {c.sender}</p></div>
       <div className="row wrap">{c.funnel.queued > 0 && <><ActionButton url="/api/admin/outreach/send-now" label="Send queued now" className="btn navy small" done="Sent." /><ActionButton url={`/api/admin/outreach/${c.id}/cancel`} label="Cancel queued" confirmText="Cancel every email of this campaign that has not been sent yet?" /></>}{c.funnel.failed > 0 && <ActionButton url={`/api/admin/outreach/${c.id}/retry`} label={`Retry ${c.funnel.failed} failed`} />}</div></div>
+    <div className="grant-sum wide"><div><p className="eyebrow">THE LINK IN THESE EMAILS GIVES</p><b>{c.grant.scope === 'all' ? 'All properties' : c.grant.listings.join(' · ')}</b><small>{c.grant.featureLabels.length} feature{c.grant.featureLabels.length === 1 ? '' : 's'}: {c.grant.featureLabels.join(', ') || 'none'}</small></div></div>
     <Funnel f={c.funnel} />
     <div className="table-wrap" tabIndex={0}><table><thead><tr><th>Company</th><th>Contact</th><th>Match</th><th>Status</th><th>Sent</th><th>Opened</th><th>Clicked</th><th>Registered</th><th>Viewed · offers</th></tr></thead><tbody>{c.messages.map((m: any) => <tr key={m.id}><td><Link href={`/admin?tab=buyers&company=${m.companyId}`}><b>{m.company}</b></Link></td><td>{m.contact}<small>{m.email}</small></td><td>{m.score ?? '—'}</td><td><span className={`pill out-${m.unsubscribedAt ? 'unsubscribed' : m.status}`}>{m.unsubscribedAt ? 'unsubscribed' : m.status}</span>{m.error && <small className="form-error">{m.error}</small>}</td><td>{dateTime(m.sentAt)}</td><td>{dateTime(m.openedAt)}</td><td>{dateTime(m.clickedAt)}</td><td>{dateTime(m.registeredAt)}</td><td>{m.views} · {m.offers}</td></tr>)}</tbody></table></div>
     <details className="panel payload"><summary><span><p className="eyebrow">TEMPLATE</p><h2>The message as written.</h2></span><span className="text-link">Show</span></summary><pre className="code">{c.body}</pre></details>

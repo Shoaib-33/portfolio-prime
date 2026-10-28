@@ -71,7 +71,9 @@ def test_buyers_import_match_and_outreach(client):
 
     noord = next(c for c in ov['companies'] if c['name'] == 'Noord Kantoren')
     a.patch(f"/admin/buyers/{noord['id']}", json={'doNotContact': True})
-    body = dict(listingId=rz['id'], companyIds=[maas['id'], noord['id']], language='nl', subject=m['templates']['nl']['subject'], body=m['templates']['nl']['body'])
+    ut = next(l for l in ov['listings'] if l['name'] == 'Room to grow in Utrecht')
+    body = dict(listingId=rz['id'], companyIds=[maas['id'], noord['id']], language='nl', subject=m['templates']['nl']['subject'], body=m['templates']['nl']['body'],
+                listingIds=[ut['id']], features=['map', 'messages'])  # the admin chooses properties and features, like an invitation
     pv = a.post('/admin/outreach/preview', json=body).json()
     assert pv['count'] == 2 and pv['skip']['doNotContact'] == 1 and 'Beste Mila' in pv['sample']['body'] and 'Maas Wonen' in pv['sample']['subject'] and '/api/m/' in pv['sample']['body']
     camp = a.post('/admin/outreach/campaigns', json=body); assert camp.status_code == 201 and camp.json()['queued'] == 2
@@ -86,9 +88,11 @@ def test_buyers_import_match_and_outreach(client):
 
     assert anon.get(f'/m/{tok}/o.gif').headers['content-type'] == 'image/gif'
     go = anon.get(f'/m/{tok}', follow_redirects=False); assert go.status_code == 302 and go.headers['location'].startswith('/invite/'), 'the email link opens a personal invitation'
-    info = anon.get(f"/invites/{go.headers['location'].split('/')[-1]}").json(); assert info['email'] == 'mila@maaswonen.example' and info['listings'] == 1 and info['companyName'] == 'Maas Wonen'
+    info = anon.get(f"/invites/{go.headers['location'].split('/')[-1]}").json(); assert info['email'] == 'mila@maaswonen.example' and info['listings'] == 2 and info['companyName'] == 'Maas Wonen'
     anon.post(f"/invites/{go.headers['location'].split('/')[-1]}/accept", json={'password': 'a-long-password', 'acceptTerms': True})
-    assert [l['slug'] for l in anon.get('/listings').json()] == ['rotterdam-zuid'], 'sees only the property from the email'
+    assert sorted(l['slug'] for l in anon.get('/listings').json()) == ['rotterdam-zuid', 'utrecht-oost'], 'sees exactly the properties the admin chose'
+    assert sorted(anon.get('/me').json()['user']['features']) == ['map', 'messages'], 'and exactly the features the admin chose'
+    assert a.get(f"/admin/outreach/{camp.json()['id']}").json()['grant']['features'] == ['map', 'messages']
 
     cid = camp.json()['id']; c = a.get(f'/admin/outreach/{cid}').json()
     assert c['funnel']['sent'] == 2 and c['funnel']['opened'] == 1 and c['funnel']['clicked'] == 1 and c['funnel']['registered'] == 1

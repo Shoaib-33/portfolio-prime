@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from .. import db
 from ..db import T, and_, desc, func, or_, select
 from ..common import audit, bad, form_body, json_body, log_rule, not_found, notify, now, parse, parse_value, require_staff, sha
-from ..domain import preset
+from ..domain import FEATURE_KEYS, FEATURES, preset
 from ..services import buyers as B
 from .access import Email, Uuid, new_invite, set_listings
 
@@ -238,7 +238,10 @@ class CampaignIn(BaseModel):
     language: Literal['nl', 'en'] = 'nl'
     subject: S(5, 200)
     body: S(40, 6000)
-    preset: Literal['viewer', 'buyer', 'institution'] = 'institution'
+    preset: Literal['viewer', 'buyer', 'institution', 'everything'] = 'institution'  # used when no feature list is given
+    listingScope: Literal['selected', 'all'] = 'selected'
+    listingIds: list[Uuid] = Field(default_factory=list, max_length=500)  # extra properties; the one in the email is always included
+    features: Optional[list[Literal[tuple(FEATURE_KEYS)]]] = None  # type: ignore
     resend: bool = False
 
 
@@ -287,13 +290,24 @@ def create_campaign(request: Request, body=Depends(json_body)):
     msgs, skip = _messages_for(b, l, p, me['name'])
     if not msgs: raise bad('Nobody to email: the selected companies have no contact person with an email address (or were already emailed about this property).')
     camp = db.ins(T.outreach_campaigns, {'listing_id': l['id'], 'name': f"{l['name']} · {now().strftime('%d-%m-%Y %H:%M')}", 'language': b.language, 'subject': b.subject, 'body': b.body, 'preset': b.preset,
-                                         'base_url': _base_url(request), 'created_by': me['id'], 'sender_name': me['name']})
+                                         'base_url': _base_url(request), 'created_by': me['id'], 'sender_name': me['name'], 'listing_scope': b.listingScope,
+                                         'listing_ids': list(dict.fromkeys([l['id'], *b.listingIds])), 'features': list(dict.fromkeys(b.features)) if b.features is not None else None})
     for c, x, subject, text_, score in msgs:
         mid = db.ins(T.outreach_messages, {'campaign_id': camp['id'], 'company_id': c['id'], 'contact_id': x['id'], 'to_email': x['email'], 'subject': subject, 'body': text_, 'token_hash': 'pending-' + os.urandom(8).hex(), 'score': score})['id']
         db.upd(T.outreach_messages, T.outreach_messages.c.id == mid, {'token_hash': sha(B.token_for(mid))})
     audit(request, 'outreach_campaign', 'listing', l['id'], {'emails': len(msgs), 'companies': len({m[0]['id'] for m in msgs}), 'language': b.language})
     log_rule('outreach', f"{me['name']} queued {len(msgs)} email{'s' if len(msgs) != 1 else ''} about {l['name']}")
     return {'id': camp['id'], 'queued': len(msgs), 'skip': skip, 'mail': B.mail_mode()}
+
+
+def _known_listings() -> set[str]:
+    return {r['id'] for r in db.rows(select(T.listings.c.id))}
+
+
+def _grant(camp: dict) -> tuple[str, list[str], list[str]]:
+    """(listing scope, listing ids, features) an outreach link grants."""
+    ids = [x for x in dict.fromkeys([camp['listing_id'], *(camp.get('listing_ids') or [])]) if x in _known_listings()]
+    return camp.get('listing_scope') or 'selected', ids, list(camp['features']) if camp.get('features') is not None else preset(camp['preset'])
 
 
 def _funnel(ms: list[dict]) -> dict:
@@ -329,8 +343,9 @@ def campaign(request: Request, id: str):
     A = T.audit_events.c
     views = {r['actor_id']: r['n'] for r in db.rows(select(A.actor_id, func.count().label('n')).where(A.actor_id.in_(users), A.action == 'view', A.object_id == c['listing_id']).group_by(A.actor_id))} if users else {}
     offers = {r['user_id']: r['n'] for r in db.rows(select(T.offers.c.user_id, func.count().label('n')).where(T.offers.c.user_id.in_(users), T.offers.c.listing_id == c['listing_id']).group_by(T.offers.c.user_id))} if users else {}
-    l = db.get(T.listings, id=c['listing_id'])
-    return {'id': c['id'], 'name': c['name'], 'listing': l['name'] if l else '—', 'slug': l['slug'] if l else None, 'language': c['language'], 'subject': rows[0]['subject'] if rows else c['subject'], 'body': c['body'], 'sender': c['sender_name'], 'createdAt': c['created_at'],
+    l = db.get(T.listings, id=c['listing_id']); scope, ids, feats = _grant(c)
+    names = {r['id']: r['name'] for r in db.rows(select(T.listings.c.id, T.listings.c.name).where(T.listings.c.id.in_(ids)))} if ids else {}
+    return {'grant': {'scope': scope, 'listings': [names.get(x, '—') for x in ids], 'features': feats, 'featureLabels': [f['label'] for f in FEATURES if f['key'] in feats]}, 'id': c['id'], 'name': c['name'], 'listing': l['name'] if l else '—', 'slug': l['slug'] if l else None, 'language': c['language'], 'subject': rows[0]['subject'] if rows else c['subject'], 'body': c['body'], 'sender': c['sender_name'], 'createdAt': c['created_at'],
             'funnel': _funnel(rows), 'messages': [{'id': r['id'], 'company': r['company'], 'companyId': r['company_id'], 'contact': r['contact'], 'email': r['to_email'], 'status': r['status'], 'score': r['score'], 'error': r['error'],
                                                    'sentAt': r['sent_at'], 'openedAt': r['opened_at'], 'clickedAt': r['clicked_at'], 'registeredAt': r['accepted_at'], 'unsubscribedAt': r['unsubscribed_at'],
                                                    'views': views.get(r['user_id'], 0), 'offers': offers.get(r['user_id'], 0)} for r in rows], 'mail': B.mail_mode()}
@@ -379,17 +394,21 @@ def clicked(request: Request, token: str):
     if company and company['stage'] in ('new', 'contacted'): db.upd(T.buyer_companies, T.buyer_companies.c.id == company['id'], {'stage': 'interested'})
     U = T.users.c; u = db.get(T.users, email=m['to_email'])
     if u and (u['deleted_at'] or u['status'] == 'suspended'): return RedirectResponse('/?link=closed', 302)
+    scope, grant_ids, grant_features = _grant(camp)
     if not u:
         u = db.ins(T.users, {'email': m['to_email'], 'name': contact['name'], 'company_name': company['name'] if company else None, 'investor_type': 'Institutional investor', 'country': 'NL', 'role': 'investor',
-                             'status': 'invited', 'password_hash': 'invited$' + os.urandom(8).hex(), 'listing_scope': 'selected', 'features': preset(camp['preset']), 'invited_by': camp['created_by'],
+                             'status': 'invited', 'password_hash': 'invited$' + os.urandom(8).hex(), 'listing_scope': scope, 'features': grant_features, 'invited_by': camp['created_by'],
                              'access_updated_at': now(), 'account_manager': camp['sender_name'], 'locale': camp['language']})
         audit(request, 'invite_created', 'user', u['id'], {'role': 'investor', 'source': 'outreach', 'listing': l['slug']}, actor={'id': None, 'name': 'Outreach link', 'email': m['to_email']})
         log_rule('access', f"{contact['name']} ({company['name'] if company else '—'}) opened the outreach link: invitation created")
-    if u['role'] == 'investor' and u['listing_scope'] != 'all':
+    if u['role'] == 'investor':  # an existing investor keeps what they had and gets what this email grants on top
         have = [r['listing_id'] for r in db.all_(T.listing_access, T.listing_access.c.user_id == u['id'])]
-        if l['id'] not in have:
-            set_listings(u['id'], have + [l['id']], camp['created_by'])
-            if u['status'] == 'active': notify(u['id'], 'access', 'New property shared with you', f"{l['name']} is now in your selection.", l['slug'])
+        new = [x for x in grant_ids if x not in have]
+        if new: set_listings(u['id'], have + new, camp['created_by'])
+        extra = [f for f in grant_features if f not in (u['features'] or [])]
+        vals = {**({'features': list(u['features'] or []) + extra} if extra else {}), **({'listing_scope': 'all'} if scope == 'all' and u['listing_scope'] != 'all' else {})}
+        if vals: db.upd(T.users, T.users.c.id == u['id'], {**vals, 'access_updated_at': now()})
+        if (new or vals) and u['status'] == 'active': notify(u['id'], 'access', 'New property shared with you', f"{l['name']} is now in your selection.", l['slug'])
     db.upd(T.outreach_messages, T.outreach_messages.c.id == m['id'], {'user_id': u['id']}); db.upd(T.buyer_contacts, T.buyer_contacts.c.id == contact['id'], {'user_id': u['id']})
     if u['status'] == 'invited':
         inv = new_invite(u['id'], camp['created_by'], 30, f"Re: {l['name']}")

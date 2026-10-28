@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { moneyShort, date } from '@/lib/format';
-import { Icon } from '@/components/access';
+import { Icon, PropertyPicker, FeaturePicker, type Listing as AccessListing, type FeatureDef, type Preset } from '@/components/access';
 
 async function call(url: string, method = 'GET', json?: unknown, body?: BodyInit) {
   const r = await fetch(url, { method, headers: json === undefined ? undefined : { 'content-type': 'application/json' }, body: json === undefined ? body : JSON.stringify(json) });
@@ -51,14 +51,18 @@ export function ImportBox() {
 /* ---------- Potential buyers + composer ---------- */
 type Buyer = { id: string; name: string; score: number; reasons: string[]; buildings: number; lastPurchase: string | null; segment: string | null; stage: string; doNotContact: boolean; inCity: number; contacts: number; emailable: number; emailedForThis: string | null; lastEmailAt: string | null };
 type Match = { listing: { id: string; name: string; nameNl: string | null; city: string; propertyType: string; units: number; askingPrice: number; priceOnRequest: boolean; status: string; slug: string }; buyers: Buyer[]; total: number; templates: Record<'nl' | 'en', { subject: string; body: string }>; mail: { mode: string; from: string } };
-const PRESET: Record<string, string> = { viewer: 'Viewer: looks and asks questions', buyer: 'Buyer: analysis, data room, offers', institution: 'Institution: also private deal rooms and bids' };
 const scoreClass = (s: number) => s >= 75 ? 'hi' : s >= 55 ? 'mid' : 'lo';
 
-export function BuyerFinder({ data, lang }: { data: Match; lang: 'nl' | 'en' }) {
+export type AccessChoices = { listings: AccessListing[]; features: FeatureDef[]; presets: Preset[] };
+
+export function BuyerFinder({ data, lang, access }: { data: Match; lang: 'nl' | 'en'; access: AccessChoices }) {
   const router = useRouter();
   const [q, setQ] = useState(''); const [onlyEmail, setOnlyEmail] = useState(false); const [hideDone, setHideDone] = useState(true);
   const [sel, setSel] = useState<Set<string>>(new Set()); const [language, setLanguage] = useState<'nl' | 'en'>(lang);
-  const [subject, setSubject] = useState(data.templates[lang].subject); const [body, setBody] = useState(data.templates[lang].body); const [preset, setPreset] = useState('institution');
+  const [subject, setSubject] = useState(data.templates[lang].subject); const [body, setBody] = useState(data.templates[lang].body); const [scope, setScope] = useState('selected'); const [ids, setIdsRaw] = useState<Set<string>>(new Set([data.listing.id]));
+  const [feat, setFeat] = useState<Set<string>>(new Set(access.presets.find(p => p.key === 'institution')?.features)); const [drawer, setDrawer] = useState(false);
+  const setIds = (n: Set<string>) => setIdsRaw(new Set([data.listing.id, ...n])); // the property in the email is always included
+  const shared = access.listings.filter(x => ids.has(x.id));
   const [preview, setPreview] = useState<any>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [done, setDone] = useState<any>(null);
   const shown = useMemo(() => data.buyers.filter(b => (!q || b.name.toLowerCase().includes(q.toLowerCase())) && (!onlyEmail || b.emailable > 0) && (!hideDone || !b.emailedForThis)), [data.buyers, q, onlyEmail, hideDone]);
   const chosen = data.buyers.filter(b => sel.has(b.id)); const reach = chosen.reduce((n, b) => n + (b.doNotContact ? 0 : b.emailable), 0);
@@ -68,7 +72,7 @@ export function BuyerFinder({ data, lang }: { data: Match; lang: 'nl' | 'en' }) 
     if (body === data.templates[language].body) setBody(data.templates[l].body);
     setLanguage(l); setPreview(null); router.replace(`/admin?tab=buyers&find=${data.listing.id}&lang=${l}`, { scroll: false });
   };
-  const payload = () => ({ listingId: data.listing.id, companyIds: [...sel], language, subject, body, preset });
+  const payload = () => ({ listingId: data.listing.id, companyIds: [...sel], language, subject, body, listingScope: scope, listingIds: [...ids], features: [...feat] });
   async function doPreview() { setErr(''); setBusy(true); try { setPreview(await call('/api/admin/outreach/preview', 'POST', payload())); } catch (e: any) { setErr(e.message); } finally { setBusy(false); } }
   async function queue() { setErr(''); setBusy(true); try { const r = await call('/api/admin/outreach/campaigns', 'POST', payload()); setDone(r); setSel(new Set()); setPreview(null); router.refresh(); } catch (e: any) { setErr(e.message); } finally { setBusy(false); } }
   const l = data.listing;
@@ -104,7 +108,9 @@ export function BuyerFinder({ data, lang }: { data: Match; lang: 'nl' | 'en' }) 
         <label>Subject<input value={subject} onChange={e => { setSubject(e.target.value); setPreview(null); }} maxLength={200} /></label>
         <label>Message<textarea value={body} onChange={e => { setBody(e.target.value); setPreview(null); }} rows={13} maxLength={6000} /></label>
         <p className="fine-print tokens">Filled in per company: {['{first_name}', '{company}', '{property}', '{city}', '{type}', '{reason}', '{price}', '{sender}', '{link}'].map(t => <code key={t}>{t}</code>)}. <b>{'{link}'}</b> is the personal invitation link. An unsubscribe line is added automatically.</p>
-        <label>Access when they open the link<select value={preset} onChange={e => setPreset(e.target.value)}>{Object.entries(PRESET).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+        <div className="grant-sum"><div><p className="eyebrow">ACCESS WHEN THEY OPEN THE LINK</p><b>{scope === 'all' ? 'All properties' : `${ids.size} propert${ids.size === 1 ? 'y' : 'ies'}`} · {feat.size} feature{feat.size === 1 ? '' : 's'}</b>
+          <small>{scope === 'all' ? 'Including future listings' : shared.slice(0, 3).map(x => x.name).join(' · ') + (shared.length > 3 ? ` +${shared.length - 3}` : '')}</small></div>
+          <button type="button" className="btn outline small" onClick={() => setDrawer(true)}>Choose</button></div>
         {preview && (preview.sample ? <div className="mail-preview"><p className="eyebrow">PREVIEW · 1 OF {preview.count} · {preview.companies} COMPAN{preview.companies === 1 ? 'Y' : 'IES'}</p><dl><dt>To</dt><dd>{preview.sample.to}</dd><dt>Subject</dt><dd><b>{preview.sample.subject}</b></dd></dl><pre>{preview.sample.body}</pre></div>
           : <p className="form-error">Nobody to email in this selection: add contact persons with an email address first.</p>)}
         <div className="row wrap"><button className="btn outline small" disabled={!sel.size || busy} onClick={doPreview}>Preview</button><button className="btn navy small" disabled={!sel.size || !reach || busy} onClick={queue}>{busy ? 'Working…' : `Queue ${reach || ''} email${reach === 1 ? '' : 's'} ↗`}</button></div>
@@ -112,6 +118,11 @@ export function BuyerFinder({ data, lang }: { data: Match; lang: 'nl' | 'en' }) 
         <p className="fine-print">{data.mail.mode === 'smtp' ? `Sent from ${data.mail.from} in batches; replies go to you.` : 'Sending is simulated until a mail server (SMTP) is connected. Each email carries a personal link: opening it creates the invitation with access to this property only.'} Companies already emailed about this property are skipped.</p>
       </>}
     </section>
+    {drawer && <div className="drawer-wrap" role="dialog" aria-modal="true" aria-label="Access for the email link" onKeyDown={e => e.key === 'Escape' && setDrawer(false)}><button className="drawer-backdrop" aria-label="Close" onClick={() => setDrawer(false)} />
+      <div className="drawer"><div className="drawer-head"><div><p className="eyebrow">ACCESS · SAME AS AN INVITATION</p><h2>What they get.</h2><p>Opening the link in the email creates their invitation with exactly these properties and features. {l.name} is always included. Change it later per person under People &amp; access.</p></div><button type="button" className="icon-btn" aria-label="Close" onClick={() => setDrawer(false)}><Icon name="x" /></button></div>
+        <section className="ed-sec"><div className="ed-sec-h"><span className="num">1</span><div><h4>Properties they see</h4></div></div><PropertyPicker listings={access.listings} scope={scope} setScope={setScope} ids={ids} setIds={setIds} /></section>
+        <section className="ed-sec"><div className="ed-sec-h"><span className="num">2</span><div><h4>Features they can use</h4></div></div><FeaturePicker features={access.features} presets={access.presets} on={feat} setOn={setFeat} /></section>
+        <div className="drawer-foot"><span className="muted-small">{scope === 'all' ? 'All properties' : `${ids.size} propert${ids.size === 1 ? 'y' : 'ies'}`} · {feat.size} feature{feat.size === 1 ? '' : 's'}</span><button type="button" className="btn navy" onClick={() => { setDrawer(false); setPreview(null); }}><Icon name="check" />Use this access</button></div></div></div>}
   </div>;
 }
 

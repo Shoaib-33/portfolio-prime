@@ -175,3 +175,11 @@
 .tab-settings{max-width:760px;padding-block:6px}
 .tab-settings .switch-row:last-of-type{border-bottom:0}
 .mail-body{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.6 Georgia,serif;color:var(--ink);margin:12px 0 0;padding:14px;background:var(--paper);border-radius:10px}
+
+/* Access chosen for an email link (summary + drawer, same pickers as an invitation) */
+.grant-sum{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.grant-sum>div{display:grid;gap:3px;min-width:0}
+.grant-sum .eyebrow{margin:0}
+.grant-sum b{font-size:14px;color:var(--navy)}
+.grant-sum small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.grant-sum.wide{background:var(--card)}

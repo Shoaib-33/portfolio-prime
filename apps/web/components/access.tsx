@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState, ReactNode, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { imgSrc, moneyShort, DEAL, dateTime, date } from '@/lib/format';
 
-type Listing = { id: string; slug: string; name: string; city: string; district?: string; image: string; dealType: string; status: string; askingPrice: number; units: number; propertyType: string; source: string; sharedWith: number };
-type FeatureDef = { key: string; label: string; desc: string; group: string };
-type Preset = { key: string; label: string; desc: string; features: string[] };
+export type Listing = { id: string; slug: string; name: string; city: string; district?: string; image: string; dealType: string; status: string; askingPrice: number; units: number; propertyType: string; source: string; sharedWith: number };
+export type FeatureDef = { key: string; label: string; desc: string; group: string };
+export type Preset = { key: string; label: string; desc: string; features: string[] };
 type Person = { id: string; name: string; email: string; companyName: string | null; investorType: string; role: string; roleLabel: string; staff: boolean; status: string; listingScope: string; listingCount: number | null; features: string[]; verified: boolean; tierLabel: string | null; twofaEnabled: boolean; lastLoginAt: string | null; createdAt: string; invite: null | { state: string; expiresAt: string } };
 type Request = { id: string; name: string; email: string; message: string | null; status: string; createdAt: string; invited: boolean };
 export type AccessData = { users: Person[]; listings: Listing[]; features: FeatureDef[]; presets: Preset[]; roles: { key: string; label: string; staff: boolean; assignable: boolean }[]; me: { role: string }; investorTypes: string[]; requests: Request[] };
@@ -46,7 +46,7 @@ export function CopyField({ value, label = 'Copy' }: { value: string; label?: st
   return <div className="copy-field"><input readOnly value={value} onFocus={e => e.currentTarget.select()} aria-label="Link" /><button type="button" className="btn small navy" onClick={copy}><Icon name={done ? 'check' : 'copy'} />{done ? 'Copied' : label}</button></div>;
 }
 
-function PropertyPicker({ listings, scope, setScope, ids, setIds }: { listings: Listing[]; scope: string; setScope: (s: string) => void; ids: Set<string>; setIds: (s: Set<string>) => void }) {
+export function PropertyPicker({ listings, scope, setScope, ids, setIds }: { listings: Listing[]; scope: string; setScope: (s: string) => void; ids: Set<string>; setIds: (s: Set<string>) => void }) {
   const [q, setQ] = useState(''); const shown = listings.filter(l => !q || `${l.name} ${l.city} ${l.district || ''} ${l.propertyType} ${DEAL[l.dealType]}`.toLowerCase().includes(q.toLowerCase()));
   const toggle = (id: string) => { const n = new Set(ids); n.has(id) ? n.delete(id) : n.add(id); setIds(n); };
   return <div className="picker">
@@ -66,7 +66,7 @@ function PropertyPicker({ listings, scope, setScope, ids, setIds }: { listings: 
   </div>;
 }
 
-function FeaturePicker({ features, presets, on, setOn }: { features: FeatureDef[]; presets: Preset[]; on: Set<string>; setOn: (s: Set<string>) => void }) {
+export function FeaturePicker({ features, presets, on, setOn }: { features: FeatureDef[]; presets: Preset[]; on: Set<string>; setOn: (s: Set<string>) => void }) {
   const groups = [...new Set(features.map(f => f.group))]; const active = presets.find(p => p.features.length === on.size && p.features.every(k => on.has(k)))?.key;
   const toggle = (k: string) => { const n = new Set(on); n.has(k) ? n.delete(k) : n.add(k); setOn(n); };
   return <div className="fpick">
