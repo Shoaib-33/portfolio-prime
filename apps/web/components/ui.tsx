@@ -6,7 +6,7 @@ import { ActionButton, LangToggle, SaveButton, Ring, Countdown } from './client'
 import { navFor, can } from '@/lib/access';
 
 export function Header({ me, lang, page }: { me: Me; lang: string; page?: string }) {
-  const t = tr(lang); const u = me.user; const nav = navFor(me);
+  const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me); // staff work in the Workspace; investor tools stay reachable by URL for previews
   const cur = (p: string) => (page === p ? { 'aria-current': 'page' as const } : {});
   const brand = <Link className="brand" href="/" aria-label="Portfolio and Prime home"><span className="brand-mark">P<span>∕</span>P</span><span>PORTFOLIO <i>&amp;</i> PRIME<small>PROPERTY. WITH PERSPECTIVE.</small></span></Link>;
   return <div id="site-header"><div className="demo-strip"><span><i></i> DEMO · INVITE-ONLY · fictional listings and people</span><span className="hide-mobile">Demo accounts on the <Link href="/login">login page</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">Private by design</span>}</div>
@@ -18,9 +18,9 @@ export function Header({ me, lang, page }: { me: Me; lang: string; page?: string
       : <nav id="navigation" aria-label="Main navigation"><Link href="/#approach">What we do</Link><Link href="/#access">How access works</Link><Link href="/#record">Track record</Link><LangToggle lang={lang} signedIn={false} /><Link href="/login" {...cur('login')}>{t('Log in')}</Link><Link className="btn small navy" href="/#request">Request access <span>↗</span></Link></nav>}</header></div>;
 }
 export function Footer({ lang, me }: { lang: string; me: Me }) {
-  const t = tr(lang); const u = me.user;
+  const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me);
   return <footer><div className="footer-top"><div><p className="eyebrow light">PORTFOLIO &amp; PRIME</p><h2>Good property.<br />A private conversation.</h2>{u ? (can(me, 'sell') ? <Link className="btn cream" href="/sell">{t('Sell your property to us')} ↗</Link> : null) : <Link className="btn cream" href="/#request">Request access ↗</Link>}</div>
-    <div className="footer-links">{u ? <><Link href="/listings">{u.staff ? t('Properties') : 'My selection'}</Link>{navFor(me).map(f => <Link key={f.key} href={f.href}>{f.label}</Link>)}<Link href="/account">{t('My account')}</Link>{u.staff && <Link href="/admin">{t('Staff workspace')}</Link>}</>
+    <div className="footer-links">{u ? <><Link href="/listings">{u.staff ? t('Properties') : 'My selection'}</Link>{nav.map(f => <Link key={f.key} href={f.href}>{f.label}</Link>)}<Link href="/account">{t('My account')}</Link>{u.staff && <Link href="/admin">{t('Staff workspace')}</Link>}</>
       : <><Link href="/#approach">What we do</Link><Link href="/#access">How access works</Link><Link href="/#record">Track record</Link><Link href="/#request">Request access</Link><Link href="/invest-in-dutch-real-estate">Invest in Dutch real estate</Link><Link href="/de/immobilien-investment-niederlande">Immobilien-Investment Niederlande</Link><Link href="/login">{t('Log in')}</Link></>}</div></div>
     <div className="footer-bottom"><span>© 2026 Portfolio &amp; Prime</span><span>Private offering · by invitation · figures indicative, not advice</span><span>Next.js · FastAPI · PostgreSQL</span></div>
     <p className="disclosure">Demo build. All listings, investors and figures are fictional; photographs are reference imagery. KYC, payments, e-signing and emails are simulated adapters. Listings arrive from the company CRM through the integration API.</p></footer>;
