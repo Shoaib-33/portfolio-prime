@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { RequestAccessForm, Icon } from '@/components/access';
+export const metadata = { title: 'Registration | Portfolio & Prime', robots: { index: false, follow: false } };
 /* Self-registration is closed: accounts are created by an admin and activated through a personal invitation link. */
 export default function Register() {
   return <section className="section request solo"><div className="req-copy"><span className="gate-icon"><Icon name="lock" /></span><p className="eyebrow">BY INVITATION</p><h1>Accounts are personal.</h1>

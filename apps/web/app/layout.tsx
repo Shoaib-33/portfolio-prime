@@ -2,6 +2,7 @@ import './globals.css';
 import './web.css';
 import './access.css';
 import './buyers.css';
+import './polish.css';
 import { headers } from 'next/headers';
 import { getMe, getLang } from '@/lib/api';
 import { Header, Footer } from '@/components/ui';

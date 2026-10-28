@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api, getMe } from '@/lib/api';
 import { ActionForm } from '@/components/client';
+export const metadata = { title: 'Investor Pro | Portfolio & Prime', robots: { index: false, follow: false } };
 export default async function Upgrade() {
   const me = await getMe(); if (!me.user) redirect('/login?next=/account/upgrade'); const cfg = (await api('/config/public')).data;
   if (me.user.tier === 'pro') return <section className="page-heading"><h1>You are on Investor Pro.</h1><p><Link href="/listings">See the off-market deals ↗</Link></p></section>;

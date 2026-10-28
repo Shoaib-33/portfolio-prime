@@ -93,7 +93,7 @@ export function BuyerFinder({ data, lang }: { data: Match; lang: 'nl' | 'en' }) 
     </div>
 
     {sel.size > 0 && !done && <a className="sel-bar" href="#composer"><b>{sel.size}</b> selected · {reach} email{reach === 1 ? '' : 's'}<span>Write the email ↓</span></a>}
-    <aside className="composer" id="composer">
+    <section className="composer" id="composer" aria-label="Email to the selected companies">
       <p className="eyebrow">EMAIL · {l.name.toUpperCase()}</p>
       {done ? <div className="invite-done"><span className="done-mark"><Icon name="check" /></span><h3>{done.queued} email{done.queued === 1 ? '' : 's'} queued.</h3>
         <p className="muted-small">{done.mail.mode === 'smtp' ? 'They go out in batches over the next minutes.' : 'No mail server is connected yet, so sending is simulated: the emails appear in the outbox (Automation tab) and the tracking links work.'}{Object.values(done.skip as Record<string, number>).some(Boolean) ? ` Skipped: ${Object.entries(done.skip as Record<string, number>).filter(([, n]) => n).map(([k, n]) => `${n} ${({ noContact: 'without email contact', unsubscribed: 'unsubscribed', alreadyEmailed: 'already emailed', doNotContact: 'marked do-not-contact' } as any)[k]}`).join(', ')}.` : ''}</p>
@@ -111,7 +111,7 @@ export function BuyerFinder({ data, lang }: { data: Match; lang: 'nl' | 'en' }) 
         {err && <p className="form-error">{err}</p>}
         <p className="fine-print">{data.mail.mode === 'smtp' ? `Sent from ${data.mail.from} in batches; replies go to you.` : 'Sending is simulated until a mail server (SMTP) is connected. Each email carries a personal link: opening it creates the invitation with access to this property only.'} Companies already emailed about this property are skipped.</p>
       </>}
-    </aside>
+    </section>
   </div>;
 }
 

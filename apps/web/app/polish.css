@@ -1,0 +1,68 @@
+/* ================= Polish: legibility, contrast (WCAG AA), tap targets, phone menu, compact workspace =================
+   Loaded last; overrides earlier sheets without rewriting them. */
+:root{--accent-text:#8a5f2e}
+
+/* Readable minimum sizes (nothing under 11px except the decorative logo line) */
+.eyebrow{font-size:11px}
+.brand small{font-size:8px;letter-spacing:1.9px;color:#5f6863}
+.demo-strip{font-size:11px;letter-spacing:.8px}
+.demo-strip a{font-size:11px}
+.disclosure{font-size:11.5px;color:#c4cec6}
+.footer-bottom{font-size:11.5px;color:#cfd8d0}
+.card-info .eyebrow,.journal-card .eyebrow,.detail-title .eyebrow,.detail-metrics span{font-size:10.5px}
+.fine-print{font-size:11.5px!important}
+td small,.document-row small{font-size:11px}
+.new-flag{background:var(--accent-text)!important;font-size:11px}
+.photo-label,.property-tag{font-size:11px}
+
+/* Brass text on light backgrounds: the darker shade passes 4.5:1 */
+.step>span,.highlights li span,.document-row b,.process span,.map-card-body em,.proc-steps span,.qa-item summary small,.range-bar .ask span,.flag.medium,
+.pillar>span,.stage-line li.current,.detail-title h1>span,.journal-card h3 span,.find-link,.text-link.brass{color:var(--accent-text)}
+
+/* Tap targets: footer and strip links get room */
+.footer-links a{display:inline-block;padding-block:5px}
+.footer-links{gap:4px}
+.demo-strip a{padding-block:6px}
+.link-button{min-height:32px;display:inline-flex;align-items:center}
+
+/* Screen-reader-only text */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Keyboard focus on scrollable tables */
+.table-wrap:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Developer: sections hidden from admins stay readable, marked instead of faded */
+.ws-tabs a.off{opacity:1;color:var(--muted);font-style:italic}
+.ws-tabs a.off::after{content:' · hidden';font-size:11px;font-style:normal}
+
+/* Compact workspace heading: staff get to their work faster */
+.workspace-heading{padding-top:34px;padding-bottom:6px}
+.workspace-heading h1{font-size:clamp(30px,3.2vw,42px);margin-bottom:8px}
+.workspace-heading>p:last-child{display:none}
+.workspace-heading .eyebrow{margin-bottom:10px}
+
+/* Investor home: one line for several new updates */
+.note-pill small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+/* Code and long values never widen the page */
+.integrations pre.code,pre.code{max-width:100%;overflow-x:auto}
+.two-panels>*,.integrations .panel{min-width:0}
+.endpoints li{overflow-wrap:anywhere}
+
+/* Account: panels keep their own height */
+.account-panels{align-items:start}
+
+/* Phone menu */
+.menu-toggle{display:none}
+@media (max-width:900px){
+  .header{height:auto;min-height:70px;padding-block:12px;flex-wrap:nowrap;position:relative}
+  .menu-toggle{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:13px;font-weight:600;color:var(--navy)}
+  .menu-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+  .header nav{display:none;position:absolute;top:100%;left:0;right:0;z-index:40;flex-direction:column;align-items:stretch;gap:2px;
+    padding:12px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px));background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 18px 30px rgba(24,46,50,.12)}
+  .header nav.open{display:flex}
+  .header nav>a:not(.btn):not(.account-btn):not(.icon-link){padding:13px 4px;border-bottom:1px solid var(--line);font-size:15px}
+  .header nav>a[aria-current=page]{color:#7a5226}
+  .header nav .lang-toggle,.header nav .account-btn,.header nav .icon-link{align-self:flex-start;margin-top:10px}
+  .header nav .btn{margin-top:10px}
+}

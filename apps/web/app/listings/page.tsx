@@ -6,6 +6,7 @@ import { ActionButton } from '@/components/client';
 import { CATEGORY, CITIES, DEAL, PROVINCES, toPoint } from '@/lib/format';
 import { ListingsMap, MapPoint } from '@/components/map';
 import { can } from '@/lib/access';
+export const metadata = { title: 'Properties | Portfolio & Prime', robots: { index: false, follow: false } };
 
 export default async function Listings({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams; const q = new URLSearchParams(Object.entries(sp).filter(([, v]) => v && v !== 'all'));

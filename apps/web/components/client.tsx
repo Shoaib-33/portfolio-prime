@@ -103,6 +103,13 @@ export function BagCreate() {
     <div className="form-grid"><label>Listing name<input name="name" required minLength={3} placeholder="The Schiedam apartments" /></label><label>Collection<select name="category"><option value="buildings">Apartment buildings</option><option value="portfolios">Residential portfolios</option><option value="homes">Prime homes</option></select></label><label>Deal type<select name="dealType"><option value="direct">Direct sale</option><option value="portfolio">Portfolio</option><option value="off_market">Off-market · Pro first look 48 h</option></select></label><label>Asking price k.k. (€)<input name="askingPrice" type="number" min={100000} defaultValue={3000000} required /></label><label>Annual rent (€)<input name="grossRentAnnual" type="number" min={0} defaultValue={180000} required /></label><label>Units<input name="units" type="number" min={1} defaultValue={12} required /></label></div>
     <button className="btn navy" type="submit">Create draft ↗</button>{err && <p className="form-error">{err}</p>}{ok && <p className="form-ok">{ok}</p>}</form>;
 }
+/** Phone menu: opens and closes the main navigation; closes again on every page change. */
+export function MenuToggle() {
+  const [open, setOpen] = useState(false); const path = usePathname(); const sp = useSearchParams();
+  useEffect(() => setOpen(false), [path, sp]);
+  useEffect(() => { document.getElementById('navigation')?.classList.toggle('open', open); }, [open]);
+  return <button type="button" className="menu-toggle" aria-expanded={open} aria-controls="navigation" onClick={() => setOpen(o => !o)}><svg viewBox="0 0 24 24" aria-hidden="true">{open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}</svg>{open ? 'Close' : 'Menu'}</button>;
+}
 /** Staff top menu: the workspace sections the developer made visible; highlights the open one. */
 export function StaffNav({ tabs }: { tabs: [string, string][] }) {
   const path = usePathname(); const sp = useSearchParams(); const cur = path === '/admin' ? sp.get('tab') || 'access' : null;

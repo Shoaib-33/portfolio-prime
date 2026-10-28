@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getMe } from '@/lib/api';
 import { ActionForm } from '@/components/client';
+export const metadata = { title: 'Verification | Portfolio & Prime', robots: { index: false, follow: false } };
 export default async function Verify() {
   const me = await getMe(); if (!me.user) redirect('/login?next=/account/verify'); const u = me.user; const company = u.investorType !== 'Private person';
   if (u.verified) return <section className="page-heading"><h1>You are verified.</h1><p>You can open data rooms, make offers and join bid rounds.</p></section>;

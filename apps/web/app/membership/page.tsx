@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { api, getMe } from '@/lib/api';
 import { TierCards } from '@/components/ui';
+export const metadata = { title: 'Membership | Portfolio & Prime', robots: { index: false, follow: false } };
 const MATRIX = [['Public teaser (city, type, price band, headline yield, photos)', 'Yes', 'Yes', 'Yes', 'Yes'], ['Exact address, full financials, floor plans', '—', 'Yes', 'Yes', 'Yes'], ['Data room after NDA', '—', '—', 'Yes', 'Yes'], ['Make offers and join bid rounds', '—', '—', 'Yes', 'Yes'], ['Off-market and pre-launch deals', '—', '—', '48 h after Pro', 'First look'], ['Alerts', '—', 'Weekly email', 'Daily', 'Instant'], ['Portfolio and bulk deals, analytics exports', '—', '—', '—', 'Yes'], ['Dedicated account manager', '—', '—', '—', 'Yes']];
 export default async function Membership() {
   const [me, cfg] = await Promise.all([getMe(), api('/config/public')]); const tiers = ['visitor', 'free', 'verified', 'pro']; const cur = me.user ? me.user.tier : 'visitor';

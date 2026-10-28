@@ -3,7 +3,7 @@ import { Me } from '@/lib/api';
 import { money, pct, STATUS, DEAL, imgSrc } from '@/lib/format';
 import { tr } from '@/lib/i18n';
 import { Suspense } from 'react';
-import { ActionButton, LangToggle, SaveButton, Ring, Countdown, StaffNav } from './client';
+import { ActionButton, LangToggle, SaveButton, Ring, Countdown, StaffNav, MenuToggle } from './client';
 import { api } from '@/lib/api';
 import { navFor, can } from '@/lib/access';
 
@@ -13,13 +13,13 @@ export async function Header({ me, lang, page }: { me: Me; lang: string; page?: 
   const staffTabs: [string, string][] = ws?.ok ? ws.data.tabs.filter((x: any) => x.visible).map((x: any) => [x.key, x.label]) : [['access', 'People & access']];
   const cur = (p: string) => (page === p ? { 'aria-current': 'page' as const } : {});
   const brand = <Link className="brand" href="/" aria-label="Portfolio and Prime home"><span className="brand-mark">P<span>∕</span>P</span><span>PORTFOLIO <i>&amp;</i> PRIME<small>PROPERTY. WITH PERSPECTIVE.</small></span></Link>;
-  return <div id="site-header"><div className="demo-strip"><span><i></i> DEMO · INVITE-ONLY · fictional listings and people</span><span className="hide-mobile">Demo accounts on the <Link href="/login">login page</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">Private by design</span>}</div>
-    <header className="header">{brand}
+  return <header id="site-header"><div className="demo-strip"><span><i></i> DEMO · INVITE-ONLY · fictional listings and people</span><span className="hide-mobile">Demo accounts on the <Link href="/login">login page</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">Private by design</span>}</div>
+    <div className="header">{brand}<Suspense fallback={null}><MenuToggle /></Suspense>
       {u ? <nav id="navigation" aria-label="Main navigation">{u.staff ? <Suspense fallback={null}><StaffNav tabs={staffTabs} /></Suspense> : <Link href="/listings" {...cur('listings')}>My selection{u.listings !== null ? <span className="nav-count">{u.listings}</span> : null}</Link>}
         {nav.map(f => <Link key={f.key} href={f.href} {...cur(f.href.slice(1))}>{f.label}</Link>)}<LangToggle lang={lang} signedIn />
         {can(me, 'messages') && !u.staff && <Link className="icon-link" href="/account/messages" aria-label="Messages"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg></Link>}
         <Link className="account-btn" href={u.staff ? '/admin' : '/account'}><span className="avatar">{u.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><span>{u.staff ? u.name.split(/\s+/)[0] : t('My account')}{me.unread ? <i className="dot">{me.unread}</i> : null}</span></Link><ActionButton url="/api/auth/logout" label={t('Log out')} className="link-button" redirect="/" /></nav>
-      : <nav id="navigation" aria-label="Main navigation"><Link href="/#approach">What we do</Link><Link href="/#access">How access works</Link><Link href="/#record">Track record</Link><LangToggle lang={lang} signedIn={false} /><Link href="/login" {...cur('login')}>{t('Log in')}</Link><Link className="btn small navy" href="/#request">Request access <span>↗</span></Link></nav>}</header></div>;
+      : <nav id="navigation" aria-label="Main navigation"><Link href="/#approach">What we do</Link><Link href="/#access">How access works</Link><Link href="/#record">Track record</Link><LangToggle lang={lang} signedIn={false} /><Link href="/login" {...cur('login')}>{t('Log in')}</Link><Link className="btn small navy" href="/#request">Request access <span>↗</span></Link></nav>}</div></header>;
 }
 export function Footer({ lang, me }: { lang: string; me: Me }) {
   const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me);
@@ -53,6 +53,6 @@ export function TierCards({ me, compact, pro }: { me: Me; compact?: boolean; pro
     {k === cur ? <span className="pill">Your level</span> : k === 'free' && cur === 'visitor' ? <Link className="btn small navy" href="/#request">Join free</Link> : k === 'verified' && cur === 'free' ? <Link className="btn small navy" href="/account/verify">Get verified</Link> : k === 'pro' && cur === 'verified' ? <Link className="btn small brass" href="/account/upgrade">Upgrade to Pro</Link> : null}</div>)}</div>;
 }
 export function SoldTable({ rows }: { rows: any[] }) {
-  return <div className="table-wrap"><table className="sold-table"><thead><tr><th>City</th><th>Type</th><th>Units</th><th>Price band</th><th>Deal</th><th>Days to offer</th></tr></thead><tbody>{rows.map((x, i) => <tr key={i}><td>{x.city}</td><td>{x.propertyType}</td><td>{x.units}</td><td>{x.priceBand}</td><td>{DEAL[x.dealType]}</td><td>{x.daysToOffer}</td></tr>)}</tbody></table></div>;
+  return <div className="table-wrap" tabIndex={0} role="region" aria-label="Table"><table className="sold-table"><thead><tr><th>City</th><th>Type</th><th>Units</th><th>Price band</th><th>Deal</th><th>Days to offer</th></tr></thead><tbody>{rows.map((x, i) => <tr key={i}><td>{x.city}</td><td>{x.propertyType}</td><td>{x.units}</td><td>{x.priceBand}</td><td>{DEAL[x.dealType]}</td><td>{x.daysToOffer}</td></tr>)}</tbody></table></div>;
 }
 export const Shield = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z" /><path d="M9 12l2 2 4-4" /></svg>;
