@@ -14,7 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import db, jobs
 from .common import SESSION_COOKIE, ApiError, load_session
-from .routers import access, account, admin, deals, institutional, integrations, messages, public
+from .routers import access, account, admin, buyers, deals, institutional, integrations, messages, public
 from .seed import seed_all
 
 logging.basicConfig(level=logging.WARNING, format='%(levelname)s %(name)s: %(message)s')
@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     async def validation_error(_: Request, e: RequestValidationError):
         return err(400, '; '.join(f"{'.'.join(str(p) for p in x['loc'][1:])}: {x['msg']}" for x in e.errors()))
 
-    for r in (public.router, account.router, deals.router, admin.router, messages.router, institutional.router, access.router, integrations.router):
+    for r in (public.router, account.router, deals.router, admin.router, messages.router, institutional.router, access.router, integrations.router, buyers.router):
         app.include_router(r, prefix='/api')
     return app
 

@@ -246,6 +246,8 @@ def accept(request: Request, response: Response, token: str, body=Depends(json_b
     set_session_cookie(response, create_session(u['id'], not u['twofa_enabled']))
     cu = {**db.camel(u), 'status': 'active', 'locale': b.locale, 'twofaPassed': not u['twofa_enabled'], 'listingIds': [r['listing_id'] for r in db.all_(T.listing_access, T.listing_access.c.user_id == u['id'])]}
     audit(request, 'invite_accepted', 'user', u['id'], actor=cu)
+    M = T.outreach_messages.c  # came in through an outreach email: the funnel shows “registered”
+    db.upd(T.outreach_messages, and_(M.user_id == u['id'], M.accepted_at.is_(None), M.clicked_at.isnot(None)), {'accepted_at': now(), 'status': 'registered'})
     if not is_staff(cu): notify(u['id'], 'welcome', 'Welcome to Portfolio & Prime', 'Your private selection is ready. Your account manager is one message away.')
     co = f" ({u['company_name']})" if u['company_name'] else ''
     if i['created_by']: notify(i['created_by'], 'access', 'Invitation accepted', f"{u['name']}{co} activated their account.")

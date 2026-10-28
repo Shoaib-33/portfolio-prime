@@ -43,6 +43,13 @@
       "when": 1793200000000,
       "tag": "0005_three_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793300000000,
+      "tag": "0006_buyers",
+      "breakpoints": true
     }
   ]
 }

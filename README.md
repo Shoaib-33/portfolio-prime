@@ -73,6 +73,14 @@ Public site, listings with filters (type, city, province, radius around a city o
 
 Market benchmarks and comparable transactions are fictional demo data (`MARKET`, `COMPS` in `app/analytics.py`); production connects a transaction-data feed. WWS points are an indicative estimate.
 
+## Buyers & outreach
+Staff workspace → **Buyers** and **Outreach**.
+- **Import**: drop the Kadaster/BAG ownership exports (`properties_*.xlsx`, `owners_*.xlsx`, `owner_properties_*.xlsx`) and contact lists (company, name, email; template under Buyers). The file type is recognised from its columns; new batches update existing rows (buildings by BAG pand id, companies by name or Kadaster entity). Imports run in the background. The exports are licensed data: keep them out of git (`files/` is ignored).
+- **Profiles**: per company, where it owns (city, province), what (residential, retail, office…), deal sizes, purchases in the last 5 years and 12 months.
+- **Potential buyers**: Listings → *Find buyers*, or Buyers → choose a property. Companies are ranked 0–100 on location, property type, deal size, scale and buying activity, with the reasons shown.
+- **Email**: select companies, edit the NL or EN template, preview and queue. Every email has a personal link: opening it creates that person's invitation with access to that property only. Opens, clicks, registrations, views and offers show under Outreach. Every email has an unsubscribe link (`/u/<token>`); unsubscribed and do-not-contact companies are never emailed again.
+- **Sending** is simulated (emails go to the outbox) until a mail server is configured: set `SMTP_HOST`, `SMTP_PORT` (587 or 465), `SMTP_USER`, `SMTP_PASSWORD` and `MAIL_FROM`; optional `PP_MAIL_BATCH` (emails per 30 s, default 25) and `PP_PUBLIC_URL` (base of the links in emails). Set SPF/DKIM for the sending domain.
+
 ## Tests
 
 `npm test` (from `platform/`) runs 28 pytest tests on a fresh embedded database: business rules (tiers, off-market timing, BAR/NAR, KYC risk, matching, RFC 6238 TOTP vectors, IRR and scenarios, WWS points, ESG, valuation, flags, mandate fit) and end-to-end API tests on a fresh in-memory database (no leaks to visitors, watermarked links bound to the user, offer → deal, bid rounds, roles, KYC, map points and radius search, messaging privacy and roles, private deal rooms and sale process, analysis, memo and AI analyst access levels, invite-only access: invitations, per-person properties and features, pausing, and the CRM API).

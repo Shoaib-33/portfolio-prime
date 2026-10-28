@@ -1,5 +1,5 @@
 """Background jobs stored in PostgreSQL (the plan uses Redis + BullMQ; a table-based queue keeps the demo to one database).
-Runs every 30 s: closes bid rounds at their deadline and releases off-market listings to verified investors."""
+Runs every 30 s: closes bid rounds at their deadline, releases off-market listings to verified investors and sends queued outreach emails in batches."""
 from __future__ import annotations
 import logging, os, threading
 from . import db
@@ -38,6 +38,8 @@ def tick() -> int:
             db.upd(T.jobs, T.jobs.c.id == j['id'], {'status': 'done', 'attempts': j['attempts'] + 1}); ran += 1
         except Exception as e:
             db.upd(T.jobs, T.jobs.c.id == j['id'], {'status': 'failed' if j['attempts'] >= 2 else 'queued', 'attempts': j['attempts'] + 1, 'last_error': str(e)[:500]})
+    from .services.buyers import send_queued  # outreach emails go out gradually, a batch per tick
+    ran += send_queued()['sent']
     return ran
 
 

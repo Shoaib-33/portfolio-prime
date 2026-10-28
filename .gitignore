@@ -11,3 +11,6 @@ apps/api/storage/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Licensed ownership exports (Kadaster / vastgoeddata): import them through the admin, never commit them
+files/
