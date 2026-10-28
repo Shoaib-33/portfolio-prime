@@ -1,6 +1,7 @@
 'use client';
 /* Small client components. Every action goes to the API through /api (proxied), then the page re-renders from the server. */
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useEffect, useState, FormEvent, ReactNode } from 'react';
 import { money, imgSrc } from '@/lib/format';
 
@@ -101,4 +102,9 @@ export function BagCreate() {
     <div className="bag-out">{bag ? <div className="bag-card"><b>{bag.address}, {bag.postcode} {bag.city}</b><span>Build year {bag.buildYear} · {bag.areaM2} m² · {bag.units} units · {bag.use} · label {bag.energyLabel} · {bag.lat}, {bag.lng}</span><small>{bag.source}</small></div> : <p className="muted-small">BAG fills build year, floor area, units, coordinates and energy label.</p>}</div>
     <div className="form-grid"><label>Listing name<input name="name" required minLength={3} placeholder="The Schiedam apartments" /></label><label>Collection<select name="category"><option value="buildings">Apartment buildings</option><option value="portfolios">Residential portfolios</option><option value="homes">Prime homes</option></select></label><label>Deal type<select name="dealType"><option value="direct">Direct sale</option><option value="portfolio">Portfolio</option><option value="off_market">Off-market · Pro first look 48 h</option></select></label><label>Asking price k.k. (€)<input name="askingPrice" type="number" min={100000} defaultValue={3000000} required /></label><label>Annual rent (€)<input name="grossRentAnnual" type="number" min={0} defaultValue={180000} required /></label><label>Units<input name="units" type="number" min={1} defaultValue={12} required /></label></div>
     <button className="btn navy" type="submit">Create draft ↗</button>{err && <p className="form-error">{err}</p>}{ok && <p className="form-ok">{ok}</p>}</form>;
+}
+/** Staff top menu: the workspace sections the developer made visible; highlights the open one. */
+export function StaffNav({ tabs }: { tabs: [string, string][] }) {
+  const path = usePathname(); const sp = useSearchParams(); const cur = path === '/admin' ? sp.get('tab') || 'access' : null;
+  return <>{tabs.map(([k, l]) => <Link key={k} href={`/admin?tab=${k}`} aria-current={cur === k ? 'page' : undefined}>{l}</Link>)}</>;
 }

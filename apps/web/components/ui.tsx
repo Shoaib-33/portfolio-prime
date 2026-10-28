@@ -2,19 +2,23 @@ import Link from 'next/link';
 import { Me } from '@/lib/api';
 import { money, pct, STATUS, DEAL, imgSrc } from '@/lib/format';
 import { tr } from '@/lib/i18n';
-import { ActionButton, LangToggle, SaveButton, Ring, Countdown } from './client';
+import { Suspense } from 'react';
+import { ActionButton, LangToggle, SaveButton, Ring, Countdown, StaffNav } from './client';
+import { api } from '@/lib/api';
 import { navFor, can } from '@/lib/access';
 
-export function Header({ me, lang, page }: { me: Me; lang: string; page?: string }) {
+export async function Header({ me, lang, page }: { me: Me; lang: string; page?: string }) {
   const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me); // staff work in the Workspace; investor tools stay reachable by URL for previews
+  const ws = u?.staff ? await api('/admin/workspace') : null; // staff menu = the workspace sections the developer made visible
+  const staffTabs: [string, string][] = ws?.ok ? ws.data.tabs.filter((x: any) => x.visible).map((x: any) => [x.key, x.label]) : [['access', 'People & access']];
   const cur = (p: string) => (page === p ? { 'aria-current': 'page' as const } : {});
   const brand = <Link className="brand" href="/" aria-label="Portfolio and Prime home"><span className="brand-mark">P<span>∕</span>P</span><span>PORTFOLIO <i>&amp;</i> PRIME<small>PROPERTY. WITH PERSPECTIVE.</small></span></Link>;
   return <div id="site-header"><div className="demo-strip"><span><i></i> DEMO · INVITE-ONLY · fictional listings and people</span><span className="hide-mobile">Demo accounts on the <Link href="/login">login page</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">Private by design</span>}</div>
     <header className="header">{brand}
-      {u ? <nav id="navigation" aria-label="Main navigation"><Link href="/listings" {...cur('listings')}>{u.staff ? t('Properties') : 'My selection'}{!u.staff && u.listings !== null ? <span className="nav-count">{u.listings}</span> : null}</Link>
+      {u ? <nav id="navigation" aria-label="Main navigation">{u.staff ? <Suspense fallback={null}><StaffNav tabs={staffTabs} /></Suspense> : <Link href="/listings" {...cur('listings')}>My selection{u.listings !== null ? <span className="nav-count">{u.listings}</span> : null}</Link>}
         {nav.map(f => <Link key={f.key} href={f.href} {...cur(f.href.slice(1))}>{f.label}</Link>)}<LangToggle lang={lang} signedIn />
         {can(me, 'messages') && !u.staff && <Link className="icon-link" href="/account/messages" aria-label="Messages"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg></Link>}
-        <Link className="account-btn" href={u.staff ? '/admin' : '/account'}><span className="avatar">{u.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><span>{u.staff ? 'Workspace' : t('My account')}{me.unread ? <i className="dot">{me.unread}</i> : null}</span></Link><ActionButton url="/api/auth/logout" label={t('Log out')} className="link-button" redirect="/" /></nav>
+        <Link className="account-btn" href={u.staff ? '/admin' : '/account'}><span className="avatar">{u.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><span>{u.staff ? u.name.split(/\s+/)[0] : t('My account')}{me.unread ? <i className="dot">{me.unread}</i> : null}</span></Link><ActionButton url="/api/auth/logout" label={t('Log out')} className="link-button" redirect="/" /></nav>
       : <nav id="navigation" aria-label="Main navigation"><Link href="/#approach">What we do</Link><Link href="/#access">How access works</Link><Link href="/#record">Track record</Link><LangToggle lang={lang} signedIn={false} /><Link href="/login" {...cur('login')}>{t('Log in')}</Link><Link className="btn small navy" href="/#request">Request access <span>↗</span></Link></nav>}</header></div>;
 }
 export function Footer({ lang, me }: { lang: string; me: Me }) {
