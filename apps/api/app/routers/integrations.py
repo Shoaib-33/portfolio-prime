@@ -171,3 +171,37 @@ def sample(request: Request):
     """Demo: run the same upsert the CRM would call, with a sample payload."""
     u = require_developer(request); r = crm_upsert(sample_listing(), f"test by {u['name']}")
     audit(request, 'crm_sample', 'listing', r['id']); return r
+
+
+# ---------- Workspace tabs: the developer decides which sections admins see ----------
+WORKSPACE_TABS = [  # (key, label, shown by default, can be switched off)
+    ('access', 'People & access', True, False), ('buyers', 'Buyers', True, True), ('outreach', 'Outreach', True, True), ('listings', 'Listings', True, True),
+    ('messages', 'Messages', True, True), ('offers', 'Offers & deals', True, True), ('overview', 'Overview', False, True), ('investors', 'Investors', False, True),
+    ('bids', 'Bid rounds', False, True), ('processes', 'Deal processes', False, True), ('acquisitions', 'Acquisitions', False, True), ('compliance', 'Compliance', False, True),
+    ('automation', 'Automation', False, True)]
+
+
+def tab_states() -> list[dict]:
+    saved = {r['key'][4:]: r['enabled'] for r in db.all_(T.automation_settings) if r['key'].startswith('tab:')}
+    return [{'key': k, 'label': l, 'visible': True if not optional else saved.get(k, default), 'locked': not optional} for k, l, default, optional in WORKSPACE_TABS]
+
+
+@router.get('/admin/workspace')
+def workspace(request: Request):
+    u = require_staff(request); return {'tabs': tab_states(), 'canEdit': u['role'] == 'developer'}
+
+
+class TabIn(BaseModel):
+    visible: bool
+
+
+@router.put('/admin/workspace/tabs/{key}')
+def set_tab(request: Request, key: str, body=Depends(json_body)):
+    require_developer(request); b = parse(TabIn, body)
+    t = next((x for x in WORKSPACE_TABS if x[0] == key), None)
+    if not t: raise not_found('Unknown section')
+    if not t[3]: raise bad(f'{t[1]} is always shown.')
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    db.run(pg_insert(T.automation_settings).values(key='tab:' + key, enabled=b.visible).on_conflict_do_update(index_elements=['key'], set_={'enabled': b.visible}))
+    audit(request, 'workspace_tab_shown' if b.visible else 'workspace_tab_hidden', 'workspace', key)
+    return {'tabs': tab_states()}

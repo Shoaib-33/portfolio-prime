@@ -133,4 +133,16 @@ export function Unsubscribe({ token, email, already }: { token: string; email: s
     : <><h1>Unsubscribe?</h1><p>Stop emails about new investment opportunities to {email}.</p><div className="row"><button className="btn navy" onClick={async () => { try { await call(`/api/m/${token}/unsubscribe`, 'POST', {}); setDone(true); } catch (e: any) { setErr(e.message); } }}>Unsubscribe ↗</button></div>{err && <p className="form-error">{err}</p>}</>;
 }
 
+/* ---------- Developer: which workspace sections admins see ---------- */
+export function WorkspaceTabs({ tabs }: { tabs: { key: string; label: string; visible: boolean; locked: boolean }[] }) {
+  const router = useRouter(); const [state, setState] = useState(tabs); const [err, setErr] = useState('');
+  const set = async (key: string, visible: boolean) => { setErr(''); try { const r = await call(`/api/admin/workspace/tabs/${key}`, 'PUT', { visible }); setState(r.tabs); router.refresh(); } catch (e: any) { setErr(e.message); } };
+  return <div className="panel tab-settings">{state.map(t => <label key={t.key} className="switch-row"><span><b>{t.label}</b><small>{TAB_HELP[t.key]}</small></span>{t.locked ? <span className="chip ghost">Always on</span> : <input className="toggle" type="checkbox" checked={t.visible} onChange={e => set(t.key, e.target.checked)} aria-label={`Show ${t.label} to admins`} />}</label>)}{err && <p className="form-error">{err}</p>}</div>;
+}
+const TAB_HELP: Record<string, string> = {
+  access: 'Invite investors and choose their properties and features.', buyers: 'Kadaster import, company profiles, contact persons, potential buyers.', outreach: 'Emails to buyers and their results; simulated outbox.',
+  listings: 'Properties, status and prices; Find buyers.', messages: 'Chat with invited investors.', offers: 'Offers, deals and viewing requests.', overview: 'KPIs and funnel statistics.',
+  investors: 'Lead scores and activity per investor.', bids: 'Sealed bid rounds with a deadline.', processes: 'Structured institutional sales with Q&A.', acquisitions: 'Pipeline of properties the company buys.',
+  compliance: 'KYC checks (Wwft), unusual transactions, audit log.', automation: 'Background rules, job queue, all outgoing email drafts.' };
+
 export const fmt = { moneyShort };

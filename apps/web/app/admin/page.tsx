@@ -3,7 +3,7 @@ import { api, getMe } from '@/lib/api';
 import { money, moneyShort, dateTime, date, STATUS, DEAL } from '@/lib/format';
 import { ActionButton, ActionForm, PatchSelect, Toggle, BagCreate } from '@/components/client';
 import { AccessManager, CreateApiKey, CopyField, Icon } from '@/components/access';
-import { ImportBox, BuyerFinder, ListingSwitch, DoNotContact } from '@/components/buyers';
+import { ImportBox, BuyerFinder, ListingSwitch, DoNotContact, WorkspaceTabs } from '@/components/buyers';
 
 /* Three kinds of user: developer (everything, incl. CRM & API), admin (runs the workspace, invites investors), investor. */
 const TABS: [string, string][] = [['buyers', 'Buyers'], ['outreach', 'Outreach'], ['overview', 'Overview'], ['investors', 'Investors'], ['offers', 'Offers & deals'], ['messages', 'Messages'], ['bids', 'Bid rounds'], ['processes', 'Deal processes'],['acquisitions', 'Acquisitions'], ['listings', 'Listings'], ['compliance', 'Compliance'], ['automation', 'Automation']];
@@ -12,9 +12,14 @@ const RULES: [string, string, string][] = [['scoring', 'Score every new lead', '
 
 export default async function Admin({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const me = await getMe(); const sp = await searchParams; const dev = me.user?.role === 'developer'; const { tab = 'access' } = sp;
+  const ws = me.user?.staff ? await api('/admin/workspace') : null; const states: any[] = ws?.ok ? ws.data.tabs : TABS.map(([key, label]) => ({ key, label, visible: true }));
+  /* the developer chooses which sections admins see (Settings); developers always see every section, hidden ones dimmed */
+  const tabs: [string, string, boolean][] = [...states.slice(0, 1).map(t => [t.key, t.label, false] as [string, string, boolean]), ...(dev ? [['integrations', 'CRM & API', false], ['settings', 'Settings', false]] as [string, string, boolean][] : []),
+    ...states.slice(1).filter(t => dev || t.visible).map(t => [t.key, t.label, !t.visible] as [string, string, boolean])];
+  const blocked = !dev && states.some(t => t.key === tab && !t.visible);
   if (!me.user?.staff) return <section className="page-heading"><p className="eyebrow">STAFF WORKSPACE</p><h1>Staff only.</h1><p>Log in with a staff account (for example admin@demo.nl). Staff accounts always use two-factor login.</p><Link className="btn navy" href="/login?next=/admin">Log in ↗</Link></section>;
   return <><section className="page-heading workspace-heading"><p className="eyebrow">STAFF WORKSPACE · {me.user.role.toUpperCase()} · {me.user.name}</p><h1>Behind the <em>offering.</em></h1><p>Admins run the workspace and invite investors, deciding per person which properties and tools they see. Developers can also create admin accounts and manage the CRM & API connection.</p></section>
-    <section className="section ws"><div className="ws-tabs" role="tablist">{[['access', 'People & access'] as [string, string], ...(dev ? [['integrations', 'CRM & API'] as [string, string]] : []), ...TABS].map(([k, l]) => <Link key={k} role="tab" aria-selected={tab === k} href={`/admin?tab=${k}`} scroll={false}>{l}</Link>)}</div><div className="ws-body">{await ((tab === 'messages' ? () => Messages(sp) : tab === 'access' ? () => Access(me.user!.id) : tab === 'buyers' ? () => Buyers(sp) : tab === 'outreach' ? () => Outreach(sp) : null) || ({ integrations: Integrations, overview: Overview, investors: Investors, offers: Offers, messages: Messages, bids: Bids, processes: Processes, acquisitions: Acquisitions, listings: Listings, compliance: Compliance, automation: Automation } as any)[tab] || Overview)()}</div></section></>;
+    <section className="section ws"><div className="ws-tabs" role="tablist">{tabs.map(([k, l, off]) => <Link key={k} role="tab" aria-selected={tab === k} className={off ? 'off' : undefined} title={off ? 'Hidden for admins' : undefined} href={`/admin?tab=${k}`} scroll={false}>{l}</Link>)}</div><div className="ws-body">{blocked ? <div className="empty"><p>This section is switched off for admins. A developer can switch it on under Settings.</p></div> : await ((tab === 'messages' ? () => Messages(sp) : tab === 'access' ? () => Access(me.user!.id) : tab === 'buyers' ? () => Buyers(sp) : tab === 'outreach' ? () => Outreach(sp) : tab === 'settings' && dev ? () => Settings() : null) || ({ integrations: Integrations, overview: Overview, investors: Investors, offers: Offers, messages: Messages, bids: Bids, processes: Processes, acquisitions: Acquisitions, listings: Listings, compliance: Compliance, automation: Automation } as any)[tab] || (() => Access(me.user!.id)))()}</div></section></>;
 }
 const Denied = ({ r }: { r: any }) => <div className="empty"><p className="form-error">{r.data?.message || 'Not allowed for your role.'}</p></div>;
 async function Overview() {
@@ -179,7 +184,8 @@ const Funnel = ({ f }: { f: any }) => <div className="ofunnel">{FUNNEL.map(([k, 
 
 async function Outreach(sp: Record<string, string | undefined>) {
   if (sp.campaign) return Campaign(sp.campaign);
-  const r = await api('/admin/outreach'); if (!r.ok) return <Denied r={r} />; const d = r.data; const t = d.totals;
+  const [r, ob] = await Promise.all([api('/admin/outreach'), api('/admin/outbox')]); if (!r.ok) return <Denied r={r} />; const d = r.data; const t = d.totals;
+  const outbox = (ob.ok ? ob.data : []).filter((m: any) => m.kind === 'outreach').slice(0, 15);
   return <div className="buyers">
     <div className="access-top"><div><p className="eyebrow">EMAIL OUTREACH</p><h2>Who opened, who came in.</h2><p className="muted-small">Each email carries a personal link. Opening it creates that person’s invitation with access to the property in the email only.</p></div>
       <div className="row wrap">{t.queued > 0 && <ActionButton url="/api/admin/outreach/send-now" label={<><Icon name="mail" />Send {t.queued} queued now</>} className="btn navy small" done="Sent." />}<Link className="btn outline small" href="/admin?tab=buyers">Find buyers ↗</Link></div></div>
@@ -187,6 +193,7 @@ async function Outreach(sp: Record<string, string | undefined>) {
     <div className="stat-row five"><div><b>{t.sent}</b><span>Sent{t.queued ? ` · ${t.queued} queued` : ''}</span></div><div><b>{t.opened}</b><span>Opened{t.sent ? ` · ${Math.round(t.opened / t.sent * 100)}%` : ''}</span></div><div><b>{t.clicked}</b><span>Clicked the link</span></div><div><b>{t.registered}</b><span>Created an account</span></div><div><b>{t.unsubscribed}</b><span>Unsubscribed{t.failed ? ` · ${t.failed} failed` : ''}</span></div></div>
     {d.campaigns.length ? <div className="campaigns">{d.campaigns.map((c: any) => <Link key={c.id} href={`/admin?tab=outreach&campaign=${c.id}`} className="campaign"><div><p className="eyebrow">{c.language.toUpperCase()} · {dateTime(c.createdAt)} · {c.sender}</p><h3>{c.listing}</h3><p className="muted-small">{c.subject}</p></div><div className="camp-side"><b>{c.funnel.total}</b><span>emails{c.funnel.queued ? ` · ${c.funnel.queued} queued` : ''}</span></div><Funnel f={c.funnel} /></Link>)}</div>
       : <div className="empty"><p>No emails yet. Open Buyers, choose a property and select the companies to email.</p><Link className="btn navy small" href="/admin?tab=buyers">Find buyers ↗</Link></div>}
+    {d.mail.mode !== 'smtp' && outbox.length > 0 && <div className="panel"><p className="eyebrow">OUTBOX · SIMULATED, NOT DELIVERED</p><h2>What the buyers would receive.</h2><p className="muted-small">Open an email to read it. The links in it work: open one in a private window to see the buyer’s side.</p>{outbox.map((m: any) => <details key={m.id} className="document-row"><summary>{m.subject}<small>To {m.toEmail} · {dateTime(m.createdAt)}</small></summary><pre className="mail-body">{m.body}</pre></details>)}</div>}
   </div>;
 }
 
@@ -199,4 +206,10 @@ async function Campaign(id: string) {
     <div className="table-wrap"><table><thead><tr><th>Company</th><th>Contact</th><th>Match</th><th>Status</th><th>Sent</th><th>Opened</th><th>Clicked</th><th>Registered</th><th>Viewed · offers</th></tr></thead><tbody>{c.messages.map((m: any) => <tr key={m.id}><td><Link href={`/admin?tab=buyers&company=${m.companyId}`}><b>{m.company}</b></Link></td><td>{m.contact}<small>{m.email}</small></td><td>{m.score ?? '—'}</td><td><span className={`pill out-${m.unsubscribedAt ? 'unsubscribed' : m.status}`}>{m.unsubscribedAt ? 'unsubscribed' : m.status}</span>{m.error && <small className="form-error">{m.error}</small>}</td><td>{dateTime(m.sentAt)}</td><td>{dateTime(m.openedAt)}</td><td>{dateTime(m.clickedAt)}</td><td>{dateTime(m.registeredAt)}</td><td>{m.views} · {m.offers}</td></tr>)}</tbody></table></div>
     <details className="panel payload"><summary><span><p className="eyebrow">TEMPLATE</p><h2>The message as written.</h2></span><span className="text-link">Show</span></summary><pre className="code">{c.body}</pre></details>
   </div>;
+}
+
+async function Settings() {
+  const r = await api('/admin/workspace'); if (!r.ok) return <Denied r={r} />;
+  return <div className="buyers"><div className="access-top"><div><p className="eyebrow">DEVELOPER · WORKSPACE</p><h2>Which sections admins see.</h2><p className="muted-small">Switch off what the team does not use yet. Nothing is deleted: switch a section back on and everything in it is still there. You always see every section; hidden ones are dimmed in the tab bar.</p></div></div>
+    <WorkspaceTabs tabs={r.data.tabs} /></div>;
 }

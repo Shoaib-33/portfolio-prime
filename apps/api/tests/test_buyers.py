@@ -109,3 +109,14 @@ def test_buyers_contacts_by_hand(client):
     d = a.get(f'/admin/buyers/{cid}').json(); assert d['contactList'][0]['email'] == 'hanna@handmatig.example'
     assert a.delete(f"/admin/buyers/contacts/{d['contactList'][0]['id']}").status_code == 200
     assert a.get('/admin/buyers/template').headers['content-type'].startswith('application/vnd.openxmlformats')
+
+
+def test_developer_chooses_the_admin_tabs(client):
+    a, d = client('admin@demo.nl'), client('developer@demo.nl')
+    tabs = {t['key']: t for t in a.get('/admin/workspace').json()['tabs']}
+    assert tabs['buyers']['visible'] and not tabs['bids']['visible'] and tabs['access']['locked'], 'defaults: the daily sections only'
+    assert a.put('/admin/workspace/tabs/bids', json={'visible': True}).status_code == 403, 'admins cannot change it'
+    assert d.put('/admin/workspace/tabs/access', json={'visible': False}).status_code == 400
+    assert d.put('/admin/workspace/tabs/bids', json={'visible': True}).status_code == 200
+    assert {t['key']: t for t in a.get('/admin/workspace').json()['tabs']}['bids']['visible'] is True
+    d.put('/admin/workspace/tabs/bids', json={'visible': False})
