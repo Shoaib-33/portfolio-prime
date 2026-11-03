@@ -7,10 +7,10 @@ import { ListingsMap, MapPoint } from './map';
 import { SEO_CITIES, SEO_TYPES, siteUrl, JsonLd } from '@/lib/seo';
 
 export function landingMeta(city: string, type?: string) {
-  const c = SEO_CITIES[city]; const t = type ? SEO_TYPES[type] : null; if (!c || (type && !t)) return { title: 'Not found | Portfolio & Prime' };
+  const c = SEO_CITIES[city]; const t = type ? SEO_TYPES[type] : null; if (!c || (type && !t)) return { title: 'Not found | Maasland & Partners' };
   const what = t ? t.nl : 'Beleggingspanden';
   return {
-    title: `${what} ${c.name} te koop | Portfolio & Prime`,
+    title: `${what} ${c.name} te koop | Maasland & Partners`,
     description: `${what} in ${c.name} (${c.province}) voor geverifieerde beleggers: BAR, NAR, WOZ, energielabel en huurlijst bij elk object. ${t ? t.en : 'Investment property'} in ${c.name}.`,
     alternates: { canonical: `/beleggingspanden/${city}${type ? '/' + type : ''}` },
   };

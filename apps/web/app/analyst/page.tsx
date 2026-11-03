@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { api, getMe } from '@/lib/api';
 import { Analyst } from '@/components/analyst';
 
-export const metadata = { title: 'AI investment analyst for Dutch real estate | Portfolio & Prime', description: 'Ask about Dutch residential yields, rent regulation (WWS), transfer tax, ESG and specific portfolios. Answers come from live platform data, with sources.', alternates: { canonical: '/analyst' } };
+export const metadata = { title: 'AI investment analyst for Dutch real estate | Maasland & Partners', description: 'Ask about Dutch residential yields, rent regulation (WWS), transfer tax, ESG and specific portfolios. Answers come from live platform data, with sources.', alternates: { canonical: '/analyst' } };
 
 const CAN: [string, string][] = [['Market questions', 'City yields and prices, transfer tax, the WWS points system and how institutional sales run.'], ['Deal screening', '“Which portfolios fit a €300m mandate at 5% BAR?” ranks what your access level can see.'], ['Per-property analysis', 'Open a property and ask about risks, valuation, rent-regulation exposure or a rate scenario.'], ['Scenarios on demand', '“What if interest is 6% and the exit yield 5.5%?” runs the platform DCF, not a guess.']];
 

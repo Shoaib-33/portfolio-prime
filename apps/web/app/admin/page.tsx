@@ -4,7 +4,7 @@ import { money, moneyShort, dateTime, date, STATUS, DEAL } from '@/lib/format';
 import { ActionButton, ActionForm, PatchSelect, Toggle, BagCreate } from '@/components/client';
 import { AccessManager, CreateApiKey, CopyField, Icon } from '@/components/access';
 import { ImportBox, BuyerFinder, ListingSwitch, DoNotContact, WorkspaceTabs } from '@/components/buyers';
-export const metadata = { title: 'Staff workspace | Portfolio & Prime', robots: { index: false, follow: false } };
+export const metadata = { title: 'Staff workspace | Maasland & Partners', robots: { index: false, follow: false } };
 
 /* Three kinds of user: developer (everything, incl. CRM & API), admin (runs the workspace, invites investors), investor. */
 const TABS: [string, string][] = [['buyers', 'Buyers'], ['outreach', 'Outreach'], ['overview', 'Overview'], ['investors', 'Investors'], ['offers', 'Offers & deals'], ['messages', 'Messages'], ['bids', 'Bid rounds'], ['processes', 'Deal processes'],['acquisitions', 'Acquisitions'], ['listings', 'Listings'], ['compliance', 'Compliance'], ['automation', 'Automation']];

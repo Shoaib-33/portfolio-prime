@@ -33,7 +33,7 @@ def _wrap(c: canvas.Canvas, text: str, font: str, size: float, x: float, y: floa
 
 def sample_pdf(title: str, subtitle: str, paragraphs: list[str]) -> bytes:
     buf = io.BytesIO(); c = canvas.Canvas(buf, pagesize=A4)
-    c.setFont('Helvetica-Bold', 9); c.setFillColor(Color(0.42, 0.45, 0.43)); c.drawString(50, 790, 'PORTFOLIO & PRIME - DATA ROOM')
+    c.setFont('Helvetica-Bold', 9); c.setFillColor(Color(0.42, 0.45, 0.43)); c.drawString(50, 790, 'MAASLAND & PARTNERS - DATA ROOM')
     c.setFont('Helvetica-Bold', 20); c.setFillColor(NAVY); c.drawString(50, 755, safe(title))
     c.setFont('Helvetica', 11); c.setFillColor(GREY); c.drawString(50, 732, safe(subtitle))
     y = 690
@@ -48,7 +48,7 @@ def memo_pdf(title: str, subtitle: str, sections: list[dict], footer: str) -> by
     buf = io.BytesIO(); c = canvas.Canvas(buf, pagesize=A4); state = {'y': 760.0}
 
     def header():
-        c.setFont('Helvetica-Bold', 8); c.setFillColor(Color(0.42, 0.45, 0.43)); c.drawString(50, 800, 'PORTFOLIO & PRIME - INVESTMENT COMMITTEE MEMO - DRAFT')
+        c.setFont('Helvetica-Bold', 8); c.setFillColor(Color(0.42, 0.45, 0.43)); c.drawString(50, 800, 'MAASLAND & PARTNERS - INVESTMENT COMMITTEE MEMO - DRAFT')
 
     def foot():
         c.setFont('Helvetica', 7); c.setFillColor(RUST); c.drawString(50, 40, safe(footer)[:150])

@@ -1,4 +1,4 @@
-"""Portfolio & Prime API (FastAPI). Every route lives under /api; the Next.js website proxies /api/* here.
+"""Maasland & Partners API (FastAPI). Every route lives under /api; the Next.js website proxies /api/* here.
 
 Run locally:  uvicorn app.main:app --reload --port 4000   (from apps/api)
 """
@@ -30,7 +30,7 @@ async def lifespan(_: FastAPI):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title='Portfolio & Prime API', version='2.0', lifespan=lifespan, docs_url='/api/docs', openapi_url='/api/openapi.json', redoc_url=None)
+    app = FastAPI(title='Maasland & Partners API', version='2.0', lifespan=lifespan, docs_url='/api/docs', openapi_url='/api/openapi.json', redoc_url=None)
 
     @app.middleware('http')
     async def session_and_headers(request: Request, call_next):

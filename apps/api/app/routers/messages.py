@@ -64,7 +64,7 @@ def mine(request: Request):
 def my_thread(request: Request, listing: str = 'general'):
     u = require_feature(request, 'messages'); l = _listing(listing, request); lid = l['id'] if l else None
     db.upd(T.messages, and_(_thread(u['id'], lid), T.messages.c.from_staff.is_(True), T.messages.c.read_at.is_(None)), {'read_at': now()})
-    return {'listing': _info(l), 'accountManager': u['accountManager'] or 'Portfolio & Prime', 'messages': _conversation(u['id'], lid)}
+    return {'listing': _info(l), 'accountManager': u['accountManager'] or 'Maasland & Partners', 'messages': _conversation(u['id'], lid)}
 
 
 class SendIn(BaseModel):

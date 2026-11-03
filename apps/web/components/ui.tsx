@@ -12,7 +12,7 @@ export async function Header({ me, lang, page }: { me: Me; lang: string; page?: 
   const ws = u?.staff ? await api('/admin/workspace') : null; // staff menu = the workspace sections the developer made visible
   const staffTabs: [string, string][] = ws?.ok ? ws.data.tabs.filter((x: any) => x.visible).map((x: any) => [x.key, x.label]) : [['access', 'People & access']];
   const cur = (p: string) => (page === p ? { 'aria-current': 'page' as const } : {});
-  const brand = <Link className="brand" href="/" aria-label="Portfolio and Prime home"><span className="brand-mark">P<span>∕</span>P</span><span>PORTFOLIO <i>&amp;</i> PRIME<small>PROPERTY. WITH PERSPECTIVE.</small></span></Link>;
+  const brand = <Link className="brand" href="/" aria-label="Maasland and Partners home"><span className="brand-mark">M<span>∕</span>P</span><span>MAASLAND <i>&amp;</i> PARTNERS<small>PROPERTY. WITH PERSPECTIVE.</small></span></Link>;
   return <header id="site-header"><div className="demo-strip"><span><i></i> DEMO · INVITE-ONLY · fictional listings and people</span><span className="hide-mobile">Demo accounts on the <Link href="/login">login page</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">Private by design</span>}</div>
     <div className="header">{brand}<Suspense fallback={null}><MenuToggle /></Suspense>
       {u ? <nav id="navigation" aria-label="Main navigation">{u.staff ? <Suspense fallback={null}><StaffNav tabs={staffTabs} /></Suspense> : <Link href="/listings" {...cur('listings')}>My selection{u.listings !== null ? <span className="nav-count">{u.listings}</span> : null}</Link>}
@@ -23,10 +23,10 @@ export async function Header({ me, lang, page }: { me: Me; lang: string; page?: 
 }
 export function Footer({ lang, me }: { lang: string; me: Me }) {
   const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me);
-  return <footer><div className="footer-top"><div><p className="eyebrow light">PORTFOLIO &amp; PRIME</p><h2>Good property.<br />A private conversation.</h2>{u ? (can(me, 'sell') ? <Link className="btn cream" href="/sell">{t('Sell your property to us')} ↗</Link> : null) : <Link className="btn cream" href="/#request">Request access ↗</Link>}</div>
+  return <footer><div className="footer-top"><div><p className="eyebrow light">MAASLAND &amp; PARTNERS</p><h2>Good property.<br />A private conversation.</h2>{u ? (can(me, 'sell') ? <Link className="btn cream" href="/sell">{t('Sell your property to us')} ↗</Link> : null) : <Link className="btn cream" href="/#request">Request access ↗</Link>}</div>
     <div className="footer-links">{u ? <><Link href="/listings">{u.staff ? t('Properties') : 'My selection'}</Link>{nav.map(f => <Link key={f.key} href={f.href}>{f.label}</Link>)}<Link href="/account">{t('My account')}</Link>{u.staff && <Link href="/admin">{t('Staff workspace')}</Link>}</>
       : <><Link href="/#approach">What we do</Link><Link href="/#access">How access works</Link><Link href="/#record">Track record</Link><Link href="/#request">Request access</Link><Link href="/invest-in-dutch-real-estate">Invest in Dutch real estate</Link><Link href="/de/immobilien-investment-niederlande">Immobilien-Investment Niederlande</Link><Link href="/login">{t('Log in')}</Link></>}</div></div>
-    <div className="footer-bottom"><span>© 2026 Portfolio &amp; Prime</span><span>Private offering · by invitation · figures indicative, not advice</span><span>Next.js · FastAPI · PostgreSQL</span></div>
+    <div className="footer-bottom"><span>© 2026 Maasland &amp; Partners</span><span>Private offering · by invitation · figures indicative, not advice</span><span>Next.js · FastAPI · PostgreSQL</span></div>
     <p className="disclosure">Demo build. All listings, investors and figures are fictional; photographs are reference imagery. KYC, payments, e-signing and emails are simulated adapters. Listings arrive from the company CRM through the integration API.</p></footer>;
 }
 const isNew = (d?: string) => !!d && Date.now() - new Date(d).getTime() < 7 * 864e5;

@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic';
 /** llms.txt: a plain-text map of the site for AI search engines and assistants (answer-engine optimisation). */
 export async function GET() {
   const b = await siteUrl();
-  const body = `# Portfolio & Prime
+  const body = `# Maasland & Partners
 
-> Private, invitation-only platform for Dutch residential property. Portfolio & Prime buys apartment buildings, mixed-use assets and portfolios and offers them to invited professional and institutional investors: each investor sees a personal selection, with private deal rooms for portfolios from EUR 25m and an AI investment analyst. Investors and sellers can request access on the home page.
+> Private, invitation-only platform for Dutch residential property. Maasland & Partners buys apartment buildings, mixed-use assets and portfolios and offers them to invited professional and institutional investors: each investor sees a personal selection, with private deal rooms for portfolios from EUR 25m and an AI investment analyst. Investors and sellers can request access on the home page.
 
 ## Key pages
 - [About and request access](${b}/): what we do, how access works, track record

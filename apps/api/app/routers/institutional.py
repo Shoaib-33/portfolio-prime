@@ -115,7 +115,7 @@ def memo(request: Request, slug: str):
                                                                   '- Tax structuring (asset vs share deal) and financing terms.', '- Decision requested: approval to submit an indicative / binding bid within the stated range.']},
     ]
     pdf = memo_pdf(f"Investment memo · {L['name']}", f"Prepared {now().strftime('%Y-%m-%d')} for {u['companyName'] or u['name']} · access: {k['access']}", sections,
-                   'Draft generated from platform data. Not investment advice. Figures indicative; verify in the data room. Portfolio & Prime demo.')
+                   'Draft generated from platform data. Not investment advice. Figures indicative; verify in the data room. Maasland & Partners demo.')
     stamped = watermark(pdf, f"{u['name']} · {u['email']} · {now().strftime('%Y-%m-%d %H:%M')} UTC")
     audit(request, 'memo_generated', 'listing', r['l']['id'], {'slug': slug})
     return Response(stamped, media_type='application/pdf', headers={'Content-Disposition': f'inline; filename="IC-memo-{slug}.pdf"', 'Cache-Control': 'no-store'})

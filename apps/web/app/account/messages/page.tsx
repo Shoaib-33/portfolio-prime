@@ -4,7 +4,7 @@ import { api, getMe } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { ActionForm } from '@/components/client';
 
-export const metadata = { title: 'Messages | Portfolio & Prime' };
+export const metadata = { title: 'Messages | Maasland & Partners' };
 
 export default async function Messages({ searchParams }: { searchParams: Promise<{ listing?: string }> }) {
   const me = await getMe(); if (!me.user) redirect('/login?next=/account/messages'); if (me.user.staff) redirect('/admin?tab=messages');

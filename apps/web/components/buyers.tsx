@@ -140,7 +140,7 @@ export function DoNotContact({ id, on }: { id: string; on: boolean }) {
 export function Unsubscribe({ token, email, already }: { token: string; email: string; already: boolean }) {
   const [done, setDone] = useState(already); const [err, setErr] = useState('');
   useEffect(() => setDone(already), [already]);
-  return done ? <><h1>You are unsubscribed.</h1><p>{email} will not receive further emails from Portfolio &amp; Prime about new opportunities.</p></>
+  return done ? <><h1>You are unsubscribed.</h1><p>{email} will not receive further emails from Maasland &amp; Partners about new opportunities.</p></>
     : <><h1>Unsubscribe?</h1><p>Stop emails about new investment opportunities to {email}.</p><div className="row"><button className="btn navy" onClick={async () => { try { await call(`/api/m/${token}/unsubscribe`, 'POST', {}); setDone(true); } catch (e: any) { setErr(e.message); } }}>Unsubscribe ↗</button></div>{err && <p className="form-error">{err}</p>}</>;
 }
 

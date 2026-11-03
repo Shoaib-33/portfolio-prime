@@ -163,7 +163,7 @@ def invite(request: Request, body=Depends(json_body)):
                          'account_manager': b.accountManager or (me['name'] if b.role == 'investor' else None)})
     known = {r['id'] for r in db.rows(select(T.listings.c.id))}; set_listings(u['id'], [x for x in b.listingIds if x in known], me['id'])
     inv = new_invite(u['id'], me['id'], b.expiresDays, b.message)
-    draft_email(u['email'], 'Your private invitation to Portfolio & Prime', f"Dear {u['name']}, {me['name']} invited you to Portfolio & Prime{f': “{b.message}”' if b.message else '.'} Open your personal link to set a password: {inv['path']} (valid until {inv['expiresAt'].strftime('%Y-%m-%d')}).", 'invite')
+    draft_email(u['email'], 'Your private invitation to Maasland & Partners', f"Dear {u['name']}, {me['name']} invited you to Maasland & Partners{f': “{b.message}”' if b.message else '.'} Open your personal link to set a password: {inv['path']} (valid until {inv['expiresAt'].strftime('%Y-%m-%d')}).", 'invite')
     audit(request, 'invite_created', 'user', u['id'], {'role': b.role, 'scope': b.listingScope, 'listings': len(b.listingIds), 'features': ' '.join(b.features)})
     log_rule('access', f"{me['name']} invited {u['name']} ({ROLE_LABEL[b.role]})")
     return {'userId': u['id'], 'path': inv['path'], 'expiresAt': inv['expiresAt']}
@@ -212,7 +212,7 @@ def status(request: Request, id: str, body=Depends(json_body)):
 def _open_invite(token: str):
     i = db.get(T.invites, token_hash=sha(str(token))); st = invite_state(i)
     if not i or st != 'pending':
-        raise not_found('This invitation has expired. Ask your contact at Portfolio & Prime for a new link.' if st == 'expired' else
+        raise not_found('This invitation has expired. Ask your contact at Maasland & Partners for a new link.' if st == 'expired' else
                         'This invitation was already used. Log in with your email and password.' if st == 'accepted' else 'This invitation link is not valid.')
     u = db.get(T.users, id=i['user_id'])
     if not u or u['status'] != 'invited': raise not_found('This invitation link is not valid.')
@@ -227,7 +227,7 @@ def invite_info(request: Request, token: str):
     by = db.get(T.users, id=i['created_by']) if i['created_by'] else None
     fs = features_of(db.camel(u))
     return {'name': u['name'], 'email': u['email'], 'companyName': u['company_name'], 'role': u['role'], 'roleLabel': ROLE_LABEL.get(u['role']), 'staff': staff, 'listings': 'all' if staff or u['listing_scope'] == 'all' else n,
-            'features': [{'key': f['key'], 'label': f['label'], 'desc': f['desc']} for f in FEATURES if f['key'] in fs], 'invitedBy': by['name'] if by else 'Portfolio & Prime', 'message': i['message'],
+            'features': [{'key': f['key'], 'label': f['label'], 'desc': f['desc']} for f in FEATURES if f['key'] in fs], 'invitedBy': by['name'] if by else 'Maasland & Partners', 'message': i['message'],
             'expiresAt': i['expires_at'], 'accountManager': u['account_manager']}
 
 
@@ -248,7 +248,7 @@ def accept(request: Request, response: Response, token: str, body=Depends(json_b
     audit(request, 'invite_accepted', 'user', u['id'], actor=cu)
     M = T.outreach_messages.c  # came in through an outreach email: the funnel shows “registered”
     db.upd(T.outreach_messages, and_(M.user_id == u['id'], M.accepted_at.is_(None), M.clicked_at.isnot(None)), {'accepted_at': now(), 'status': 'registered'})
-    if not is_staff(cu): notify(u['id'], 'welcome', 'Welcome to Portfolio & Prime', 'Your private selection is ready. Your account manager is one message away.')
+    if not is_staff(cu): notify(u['id'], 'welcome', 'Welcome to Maasland & Partners', 'Your private selection is ready. Your account manager is one message away.')
     co = f" ({u['company_name']})" if u['company_name'] else ''
     if i['created_by']: notify(i['created_by'], 'access', 'Invitation accepted', f"{u['name']}{co} activated their account.")
     return {'user': public_user(cu)}
@@ -274,7 +274,7 @@ def request_access(request: Request, body=Depends(json_body)):
     if b.interest != 'invest':
         db.ins(T.acquisition_leads, {'source': 'Website · access request', 'address': b.companyName or b.name, 'property_type': 'To be discussed', 'units': 1, 'contact_name': b.name, 'contact_email': b.email, 'notes': b.message}, returning=False)
     log_rule('access', f"Access request from {b.name}{f' ({b.companyName})' if b.companyName else ''}")
-    draft_email(b.email, 'We received your request', f'Dear {b.name}, thank you for your interest in Portfolio & Prime. A partner will contact you within one working day. Access is personal and by invitation.', 'access')
+    draft_email(b.email, 'We received your request', f'Dear {b.name}, thank you for your interest in Maasland & Partners. A partner will contact you within one working day. Access is personal and by invitation.', 'access')
     audit(request, 'access_request', 'enquiry', e['id'], {'interest': b.interest})
     return {'reference': 'AR-' + e['id'][:6].upper()}
 

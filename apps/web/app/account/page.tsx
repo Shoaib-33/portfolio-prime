@@ -4,7 +4,7 @@ import { api, getMe } from '@/lib/api';
 import { money, dateTime, CITIES, CATEGORY, imgSrc } from '@/lib/format';
 import { ActionButton, ActionForm } from '@/components/client';
 import { can, navFor } from '@/lib/access';
-export const metadata = { title: 'My account | Portfolio & Prime', robots: { index: false, follow: false } };
+export const metadata = { title: 'My account | Maasland & Partners', robots: { index: false, follow: false } };
 
 export default async function Account() {
   const me = await getMe(); if (!me.user) redirect('/login?next=/account'); if (me.user.staff) redirect('/admin');

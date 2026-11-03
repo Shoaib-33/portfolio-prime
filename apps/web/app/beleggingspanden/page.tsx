@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { SEO_CITIES, SEO_TYPES } from '@/lib/seo';
 
-export const metadata = { title: 'Beleggingspanden te koop per stad | Portfolio & Prime', description: 'Beleggingspanden in Amsterdam, Rotterdam, Utrecht, Den Haag en Eindhoven voor geverifieerde beleggers, met BAR, NAR en WOZ bij elk object.', alternates: { canonical: '/beleggingspanden' } };
+export const metadata = { title: 'Beleggingspanden te koop per stad | Maasland & Partners', description: 'Beleggingspanden in Amsterdam, Rotterdam, Utrecht, Den Haag en Eindhoven voor geverifieerde beleggers, met BAR, NAR en WOZ bij elk object.', alternates: { canonical: '/beleggingspanden' } };
 
 export default async function SeoIndex() {
   const all: any[] = (await api('/listings')).data || [];

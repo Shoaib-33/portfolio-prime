@@ -3,13 +3,13 @@ import { api, getMe } from '@/lib/api';
 import { money, moneyShort } from '@/lib/format';
 import { JsonLd, siteUrl } from '@/lib/seo';
 
-export const metadata = { title: 'Dutch residential investment market report Q3 2026 | Portfolio & Prime', description: 'Residential yields (BAR), prices per m², market rents and rent growth for Amsterdam, Utrecht, Rotterdam, Den Haag, Eindhoven and Haarlem, plus recent portfolio transactions, transfer tax and WWS thresholds.', alternates: { canonical: '/market-report' } };
+export const metadata = { title: 'Dutch residential investment market report Q3 2026 | Maasland & Partners', description: 'Residential yields (BAR), prices per m², market rents and rent growth for Amsterdam, Utrecht, Rotterdam, Den Haag, Eindhoven and Haarlem, plus recent portfolio transactions, transfer tax and WWS thresholds.', alternates: { canonical: '/market-report' } };
 
 export default async function MarketReport() {
   const [me, r] = await Promise.all([getMe(), api('/market/report')]); const d = r.data; const base = await siteUrl();
   if (!r.ok) return <section className="section empty"><h1>Report unavailable.</h1></section>;
   return <>
-    <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Dataset', name: `Dutch residential investment benchmarks ${d.asOf}`, description: metadata.description, url: `${base}/market-report`, creator: { '@type': 'Organization', name: 'Portfolio & Prime' }, spatialCoverage: 'Netherlands', variableMeasured: ['Gross initial yield (BAR)', 'Price per m²', 'Market rent per m²', 'Rent growth', 'Vacancy'], isAccessibleForFree: true }} />
+    <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Dataset', name: `Dutch residential investment benchmarks ${d.asOf}`, description: metadata.description, url: `${base}/market-report`, creator: { '@type': 'Organization', name: 'Maasland & Partners' }, spatialCoverage: 'Netherlands', variableMeasured: ['Gross initial yield (BAR)', 'Price per m²', 'Market rent per m²', 'Rent growth', 'Vacancy'], isAccessibleForFree: true }} />
     <section className="page-heading"><p className="eyebrow">MARKET REPORT · {d.asOf.toUpperCase()}</p><h1>Dutch residential,<br /><em>in numbers.</em></h1><p>Benchmarks for the six cities where institutional capital concentrates, recent portfolio transactions and the rules that move returns: transfer tax and the WWS points system. Members get the full quarterly PDF and alerts.</p></section>
     <section className="section">
       <div className="table-wrap" tabIndex={0}><table><thead><tr><th>City</th><th>BAR (gross initial yield)</th><th>Price per m²</th><th>Market rent per m² / month</th><th>Rent growth / year</th><th>Vacancy</th></tr></thead><tbody>{d.cities.map((c: any) => <tr key={c.city}><td><b>{c.city}</b></td><td>{c.bar}%</td><td>{money(c.perM2)}</td><td>€{c.rentM2}</td><td>{c.growth}%</td><td>{c.vacancy}%</td></tr>)}</tbody></table></div>

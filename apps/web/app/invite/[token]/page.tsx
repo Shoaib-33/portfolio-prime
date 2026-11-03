@@ -4,7 +4,7 @@ import { api, getMe } from '@/lib/api';
 import { date } from '@/lib/format';
 import { AcceptInvite, Icon } from '@/components/access';
 
-export const metadata = { title: 'Your invitation | Portfolio & Prime', robots: { index: false, follow: false } };
+export const metadata = { title: 'Your invitation | Maasland & Partners', robots: { index: false, follow: false } };
 export default async function Invite({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params; const [me, r] = await Promise.all([getMe(), api(`/invites/${encodeURIComponent(token)}`)]);
   if (!r.ok) return <section className="gate-screen"><div className="gate-card"><span className="gate-icon"><Icon name="link" /></span><p className="eyebrow">INVITATION</p><h1>This link does not work.</h1><p>{r.data?.message || 'The invitation link is not valid.'}</p>
@@ -12,7 +12,7 @@ export default async function Invite({ params }: { params: Promise<{ token: stri
   if (me.user) redirect('/');
   const d = r.data;
   return <section className="invite-page"><div className="invite-welcome"><p className="eyebrow light">PERSONAL INVITATION · VALID UNTIL {date(d.expiresAt).toUpperCase()}</p>
-      <h1>Welcome, {d.name.split(' ')[0]}.</h1><p className="lead-light">{d.invitedBy} invited you to Portfolio &amp; Prime{d.companyName ? ` on behalf of ${d.companyName}` : ''}.</p>
+      <h1>Welcome, {d.name.split(' ')[0]}.</h1><p className="lead-light">{d.invitedBy} invited you to Maasland &amp; Partners{d.companyName ? ` on behalf of ${d.companyName}` : ''}.</p>
       {d.message && <blockquote>“{d.message}”<cite>— {d.invitedBy}</cite></blockquote>}
       <div className="inv-grid"><div className="inv-stat"><b>{d.staff ? 'All' : d.listings === 'all' ? 'All' : d.listings}</b><span>{d.staff ? `properties · ${d.roleLabel} role` : d.listings === 'all' ? 'properties, including new ones' : `propert${d.listings === 1 ? 'y' : 'ies'} selected for you`}</span></div>
         {!d.staff && d.accountManager && <div className="inv-stat"><b className="initials">{d.accountManager.split(' ').map((w: string) => w[0]).join('')}</b><span>{d.accountManager}, your account manager</span></div>}</div>

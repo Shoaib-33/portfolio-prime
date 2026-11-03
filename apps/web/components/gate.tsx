@@ -9,7 +9,7 @@ const LABEL: Record<string, string> = { institutional: 'Private deal rooms', ana
 export async function Gate({ feature, children }: { feature?: string; children: React.ReactNode }) {
   const me = await getMe(); const path = (await headers()).get('x-pp-path') || '/';
   if (!me.user) return <section className="gate-screen"><div className="gate-card"><span className="gate-icon"><Icon name="lock" /></span><p className="eyebrow">PRIVATE OFFERING</p><h1>This part is by invitation.</h1>
-    <p>Portfolio &amp; Prime shares properties personally. Investors receive an invitation with their own selection, after a short introduction.</p>
+    <p>Maasland &amp; Partners shares properties personally. Investors receive an invitation with their own selection, after a short introduction.</p>
     <div className="row"><Link className="btn navy" href={`/login?next=${encodeURIComponent(path)}`}>Log in ↗</Link><Link className="btn outline" href="/#request">Request access</Link></div></div></section>;
   if (feature && !can(me, feature)) return <section className="gate-screen"><div className="gate-card"><span className="gate-icon"><Icon name="lock" /></span><p className="eyebrow">NOT IN YOUR ACCESS YET</p><h1>{LABEL[feature] || 'This feature'} is not switched on for you.</h1>
     <p>Your account manager{me.user.accountManager ? `, ${me.user.accountManager},` : ''} decides which tools are part of your access. Ask them and it can be switched on today.</p>

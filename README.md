@@ -1,4 +1,4 @@
-# Portfolio & Prime: investor platform (version 1)
+# Maasland & Partners: investor platform (version 1)
 
 Phase 1 (MVP) of the *Dutch Investor Property Platform: Product & Technical Plan* (23 Oct 2026), built as a real application with a backend and a database. All listings, people and companies are fictional.
 

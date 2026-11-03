@@ -195,7 +195,7 @@ export function RequestAccessForm({ defaultInterest = 'invest' }: { defaultInter
       <label>Company<input name="companyName" maxLength={120} autoComplete="organization" /></label><label>You are<select name="investorType" defaultValue="Private BV">{['Private person', 'Private BV', 'Fund', 'Family office', 'Pension fund', 'Insurer', 'Institutional investor', 'Developer'].map(t => <option key={t}>{t}</option>)}</select></label>
       <label>Typical ticket<select name="ticket" defaultValue="">{[['', 'Prefer not to say'], ['< €2m', 'Up to €2m'], ['€2–10m', '€2–10m'], ['€10–50m', '€10–50m'], ['€50–250m', '€50–250m'], ['€250m+', '€250m+']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className="span2">What are you looking for? (optional)<textarea name="message" maxLength={2000} placeholder="Regions, property types, size, timing" /></label></div>
-    <label className="check-label"><input type="checkbox" name="consent" required /><span>I agree that Portfolio &amp; Prime contacts me about my request (privacy statement).</span></label>
+    <label className="check-label"><input type="checkbox" name="consent" required /><span>I agree that Maasland &amp; Partners contacts me about my request (privacy statement).</span></label>
     <button className="btn navy wide-btn" disabled={state === 'busy'}>{state === 'busy' ? 'Sending…' : 'Request access'} <span>↗</span></button>{err && <p className="form-error">{err}</p>}</form>;
 }
 

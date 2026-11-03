@@ -39,7 +39,7 @@ def public_user(u: dict | None) -> dict | None:
 @post('/auth/register')
 def register():
     """Invite-only platform: accounts are created by an admin and activated through an invitation link (access router)."""
-    raise forbidden('Portfolio & Prime is by invitation only. Request access on the home page, or use the link in your invitation.')
+    raise forbidden('Maasland & Partners is by invitation only. Request access on the home page, or use the link in your invitation.')
 
 
 class LoginIn(BaseModel):

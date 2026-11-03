@@ -418,9 +418,9 @@ def match(listing: dict, prop: dict, companies: list[dict], lang: str = 'en') ->
 # ---------------- Emails ----------------
 TEMPLATES = {
     'nl': {'subject': '{property} in {city}: besloten aanbod voor {company}',
-           'body': 'Beste {first_name},\n\nPortfolio & Prime brengt een nieuwe investering in de markt die aansluit bij de portefeuille van {company}: {property} in {city} ({type}).\n\nWaarom wij aan u dachten: {reason}.\n\nHet aanbod is besloten. Via uw persoonlijke link bekijkt u de details, de cijfers en de stukken:\n{link}\n\nIk licht het graag persoonlijk toe.\n\nMet vriendelijke groet,\n{sender}\nPortfolio & Prime'},
+           'body': 'Beste {first_name},\n\nMaasland & Partners brengt een nieuwe investering in de markt die aansluit bij de portefeuille van {company}: {property} in {city} ({type}).\n\nWaarom wij aan u dachten: {reason}.\n\nHet aanbod is besloten. Via uw persoonlijke link bekijkt u de details, de cijfers en de stukken:\n{link}\n\nIk licht het graag persoonlijk toe.\n\nMet vriendelijke groet,\n{sender}\nMaasland & Partners'},
     'en': {'subject': '{property} in {city}: a private opportunity for {company}',
-           'body': 'Dear {first_name},\n\nPortfolio & Prime is bringing a new investment to market that fits the portfolio of {company}: {property} in {city} ({type}).\n\nWhy we thought of you: {reason}.\n\nThe offering is private. Your personal link opens the details, the numbers and the documents:\n{link}\n\nI would be glad to walk you through it.\n\nKind regards,\n{sender}\nPortfolio & Prime'}}
+           'body': 'Dear {first_name},\n\nMaasland & Partners is bringing a new investment to market that fits the portfolio of {company}: {property} in {city} ({type}).\n\nWhy we thought of you: {reason}.\n\nThe offering is private. Your personal link opens the details, the numbers and the documents:\n{link}\n\nI would be glad to walk you through it.\n\nKind regards,\n{sender}\nMaasland & Partners'}}
 FOOTER = {'nl': 'U ontvangt deze e-mail omdat {company} actief is op de Nederlandse vastgoedmarkt. Geen berichten meer ontvangen? {unsubscribe}',
           'en': 'You receive this email because {company} is active in the Dutch property market. No more emails? {unsubscribe}'}
 
@@ -470,7 +470,7 @@ def render(m: dict, campaign: dict, lang: str) -> tuple[str, str, str, dict]:
 
 def mail_mode() -> dict:
     host = os.environ.get('SMTP_HOST')
-    return {'mode': 'smtp' if host else 'simulated', 'from': os.environ.get('MAIL_FROM') or 'Portfolio & Prime <no-reply@portfolio-prime.nl>', 'host': host,
+    return {'mode': 'smtp' if host else 'simulated', 'from': os.environ.get('MAIL_FROM') or 'Maasland & Partners <no-reply@portfolio-prime.nl>', 'host': host,
             'perTick': int(os.environ.get('PP_MAIL_BATCH') or 25)}
 
 
