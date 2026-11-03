@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, ReactNode, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { imgSrc, moneyShort, DEAL, dateTime, date } from '@/lib/format';
+import { useT } from '@/components/lang';
 
 export type Listing = { id: string; slug: string; name: string; city: string; district?: string; image: string; dealType: string; status: string; askingPrice: number; units: number; propertyType: string; source: string; sharedWith: number };
 export type FeatureDef = { key: string; label: string; desc: string; group: string };
@@ -186,28 +187,28 @@ export function CreateApiKey() {
 
 /* ---------- Public: request access, accept invitation ---------- */
 export function RequestAccessForm({ defaultInterest = 'invest' }: { defaultInterest?: string }) {
-  const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle'); const [err, setErr] = useState(''); const [ref, setRef] = useState('');
-  if (state === 'done') return <div className="ra-done"><span className="done-mark"><Icon name="check" /></span><h3>Thank you.</h3><p>A partner will contact you within one working day to discuss your mandate. Reference <b>{ref}</b>.</p></div>;
+  const t = useT(); const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle'); const [err, setErr] = useState(''); const [ref, setRef] = useState('');
+  if (state === 'done') return <div className="ra-done"><span className="done-mark"><Icon name="check" /></span><h3>{t('Thank you.')}</h3><p>{t('A partner will contact you within one working day to discuss your mandate.')} {t('Reference')} <b>{ref}</b>.</p></div>;
   return <form className="ra-form" onSubmit={async e => { e.preventDefault(); const f = e.currentTarget; if (!f.reportValidity()) return; const o: any = Object.fromEntries(new FormData(f)); o.consent = o.consent === 'on'; setState('busy'); setErr('');
     try { const r = await call('/api/access-requests', 'POST', o); setRef(r.reference); setState('done'); } catch (x: any) { setErr(x.message); setState('idle'); } }}>
-    <fieldset className="interest"><legend>I would like to</legend>{[['invest', 'Invest'], ['sell', 'Sell a property'], ['both', 'Both']].map(([v, l]) => <label key={v}><input type="radio" name="interest" value={v} defaultChecked={v === defaultInterest} /><span>{l}</span></label>)}</fieldset>
-    <div className="form-grid"><label>Full name<input name="name" required minLength={2} autoComplete="name" /></label><label>Work email<input name="email" type="email" required autoComplete="email" /></label>
-      <label>Company<input name="companyName" maxLength={120} autoComplete="organization" /></label><label>You are<select name="investorType" defaultValue="Private BV">{['Private person', 'Private BV', 'Fund', 'Family office', 'Pension fund', 'Insurer', 'Institutional investor', 'Developer'].map(t => <option key={t}>{t}</option>)}</select></label>
-      <label>Typical ticket<select name="ticket" defaultValue="">{[['', 'Prefer not to say'], ['< €2m', 'Up to €2m'], ['€2–10m', '€2–10m'], ['€10–50m', '€10–50m'], ['€50–250m', '€50–250m'], ['€250m+', '€250m+']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      <label className="span2">What are you looking for? (optional)<textarea name="message" maxLength={2000} placeholder="Regions, property types, size, timing" /></label></div>
-    <label className="check-label"><input type="checkbox" name="consent" required /><span>I agree that Maasland &amp; Partners contacts me about my request (privacy statement).</span></label>
-    <button className="btn navy wide-btn" disabled={state === 'busy'}>{state === 'busy' ? 'Sending…' : 'Request access'} <span>↗</span></button>{err && <p className="form-error">{err}</p>}</form>;
+    <fieldset className="interest"><legend>{t('I would like to')}</legend>{[['invest', 'Invest'], ['sell', 'Sell a property'], ['both', 'Both']].map(([v, l]) => <label key={v}><input type="radio" name="interest" value={v} defaultChecked={v === defaultInterest} /><span>{t(l)}</span></label>)}</fieldset>
+    <div className="form-grid"><label>{t('Full name')}<input name="name" required minLength={2} autoComplete="name" /></label><label>{t('Work email')}<input name="email" type="email" required autoComplete="email" /></label>
+      <label>{t('Company')}<input name="companyName" maxLength={120} autoComplete="organization" /></label><label>{t('You are')}<select name="investorType" defaultValue="Private BV">{['Private person', 'Private BV', 'Fund', 'Family office', 'Pension fund', 'Insurer', 'Institutional investor', 'Developer'].map(x => <option key={x} value={x}>{t(x)}</option>)}</select></label>
+      <label>{t('Typical ticket')}<select name="ticket" defaultValue="">{[['', 'Prefer not to say'], ['< €2m', 'Up to €2m'], ['€2–10m', '€2–10m'], ['€10–50m', '€10–50m'], ['€50–250m', '€50–250m'], ['€250m+', '€250m+']].map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</select></label>
+      <label className="span2">{t('What are you looking for? (optional)')}<textarea name="message" maxLength={2000} placeholder={t('Regions, property types, size, timing')} /></label></div>
+    <label className="check-label"><input type="checkbox" name="consent" required /><span>{t('I agree that Maasland & Partners contacts me about my request (privacy statement).')}</span></label>
+    <button className="btn navy wide-btn" disabled={state === 'busy'}>{state === 'busy' ? t('Sending…') : t('Request access')} <span>↗</span></button>{err && <p className="form-error">{err}</p>}</form>;
 }
 
 export function AcceptInvite({ token, staff, email }: { token: string; staff: boolean; email: string }) {
-  const router = useRouter(); const [pw, setPw] = useState(''); const [pw2, setPw2] = useState(''); const [show, setShow] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const t = useT(); const router = useRouter(); const [pw, setPw] = useState(''); const [pw2, setPw2] = useState(''); const [show, setShow] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const strength = Math.min(4, (pw.length >= 10 ? 1 : 0) + (/[A-Z]/.test(pw) && /[a-z]/.test(pw) ? 1 : 0) + (/\d/.test(pw) ? 1 : 0) + (/[^\w]/.test(pw) || pw.length >= 16 ? 1 : 0));
-  return <form className="accept-form" onSubmit={async e => { e.preventDefault(); if (!e.currentTarget.reportValidity()) return; if (pw !== pw2) return setErr('The two passwords are not the same.'); setBusy(true); setErr('');
+  return <form className="accept-form" onSubmit={async e => { e.preventDefault(); if (!e.currentTarget.reportValidity()) return; if (pw !== pw2) return setErr(t('The two passwords are not the same.')); setBusy(true); setErr('');
     try { await call(`/api/invites/${encodeURIComponent(token)}/accept`, 'POST', { password: pw, acceptTerms: true }); router.push(staff ? '/admin' : '/'); router.refresh(); } catch (x: any) { setErr(x.message); setBusy(false); } }}>
-    <label>Email<input value={email} readOnly autoComplete="username" /></label>
-    <label>Choose a password<span className="pw"><input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} minLength={10} required autoComplete="new-password" /><button type="button" className="link-button" onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button></span></label>
-    <div className={`strength s${strength}`} aria-hidden="true"><i /><i /><i /><i /></div><small className="muted-small">At least 10 characters. A passphrase works well.</small>
-    <label>Repeat password<input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} minLength={10} required autoComplete="new-password" /></label>
-    <label className="check-label"><input type="checkbox" required /><span>I accept the terms, the privacy statement and that information I receive is confidential.</span></label>
-    <button className="btn navy wide-btn" disabled={busy}>{busy ? 'Activating…' : 'Activate my access'} <span>↗</span></button>{err && <p className="form-error">{err}</p>}</form>;
+    <label>{t('Email')}<input value={email} readOnly autoComplete="username" /></label>
+    <label>{t('Choose a password')}<span className="pw"><input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} minLength={10} required autoComplete="new-password" /><button type="button" className="link-button" onClick={() => setShow(!show)}>{show ? t('Hide') : t('Show')}</button></span></label>
+    <div className={`strength s${strength}`} aria-hidden="true"><i /><i /><i /><i /></div><small className="muted-small">{t('At least 10 characters. A passphrase works well.')}</small>
+    <label>{t('Repeat password')}<input type={show ? 'text' : 'password'} value={pw2} onChange={e => setPw2(e.target.value)} minLength={10} required autoComplete="new-password" /></label>
+    <label className="check-label"><input type="checkbox" required /><span>{t('I accept the terms, the privacy statement and that information I receive is confidential.')}</span></label>
+    <button className="btn navy wide-btn" disabled={busy}>{busy ? t('Activating…') : t('Activate my access')} <span>↗</span></button>{err && <p className="form-error">{err}</p>}</form>;
 }

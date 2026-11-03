@@ -102,9 +102,11 @@ def create_session(user_id: str, twofa_passed: bool) -> str:
     return token
 
 
-def set_session_cookie(response, token: str):
+def set_session_cookie(response, token: str, locale: str | None = None):
     secure = os.environ.get('RENDER') == 'true' or os.environ.get('PP_SECURE_COOKIE') == '1'
     response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_DAYS * 86400, path='/', httponly=True, samesite='lax', secure=secure)
+    # Investors who chose Dutch get the website in Dutch as soon as they sign in (the website reads pp_lang)
+    if locale == 'nl': response.set_cookie('pp_lang', 'nl', max_age=365 * 86400, path='/', samesite='lax', secure=secure)
 
 
 def load_session(token: str | None) -> dict | None:

@@ -1,5 +1,11 @@
-/* English text is the key; Dutch maps it. Missing entries fall back to English. */
-const NL: Record<string, string> = {
+/* English text is the key; Dutch maps it. Missing entries fall back to English.
+   Each area keeps its own Dutch dictionary in lib/nl/*.ts; they are merged here. */
+import PUBLIC from './nl/public';
+import LISTINGS from './nl/listings';
+import ACCOUNT from './nl/account';
+import SHARED from './nl/shared';
+
+const CORE: Record<string, string> = {
   'Properties': 'Aanbod', 'Smart finder': 'Slimme zoeker', 'Membership': 'Lidmaatschap', 'Sell to us': 'Verkoop aan ons', 'Join free': 'Gratis aanmelden', 'Log in': 'Inloggen', 'Log out': 'Uitloggen', 'My account': 'Mijn account', 'Staff workspace': 'Medewerkersomgeving',
   'Exclusive Dutch property deals for verified investors, with every number and document in one place.': 'Exclusief vastgoedaanbod voor geverifieerde beleggers, met alle cijfers en documenten op één plek.',
   'OFF-MARKET FIRST. UNDERWRITTEN IN TEN MINUTES.': 'EERST OFF-MARKET. IN TIEN MINUTEN DOORGEREKEND.', 'Explore the offering': 'Bekijk het aanbod', 'What can my capital buy?': 'Wat kan ik kopen met mijn vermogen?',
@@ -13,4 +19,11 @@ const NL: Record<string, string> = {
   'YOUR NEXT STEP': 'UW VOLGENDE STAP', 'Make an offer': 'Doe een bod', 'Request a viewing': 'Bezichtiging aanvragen', 'Ask a question': 'Stel een vraag', 'Message your account manager': 'Bericht aan uw accountmanager', 'Messages': 'Berichten', 'Map': 'Kaart', 'Verify to make offers': 'Verifieer om te bieden', 'Submit a sealed bid': 'Doe een gesloten bod',
   'All properties': 'Alle objecten', 'Residential portfolios': 'Woningportefeuilles', 'Apartment buildings': 'Appartementencomplexen', 'Prime homes': 'Toplocatiewoningen', 'Every city': 'Elke stad', 'Search': 'Zoeken', 'Back to the offering': 'Terug naar het aanbod',
 };
-export const tr = (lang: string) => (s: string) => (lang === 'nl' && NL[s]) || s;
+const NL: Record<string, string> = { ...CORE, ...SHARED, ...PUBLIC, ...LISTINGS, ...ACCOUNT };
+export type T = (s: string, vars?: Record<string, string | number>) => string;
+/** t('Hello {name}', { name }) : Dutch when the language is nl and a translation exists, else the English text. */
+export const tr = (lang: string): T => (s, vars) => {
+  let out = (lang === 'nl' && NL[s]) || s.split('||')[0]; // 'Close||deal': text before || is the English, after it tells same-spelled words apart
+  if (vars) for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(String(v));
+  return out;
+};

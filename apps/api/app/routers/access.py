@@ -243,7 +243,7 @@ def accept(request: Request, response: Response, token: str, body=Depends(json_b
     i, u = _open_invite(token); b = parse(AcceptIn, body)
     db.upd(T.users, T.users.c.id == u['id'], {'password_hash': hash_password(b.password), 'status': 'active', 'locale': b.locale, 'last_login_at': now()})
     db.upd(T.invites, T.invites.c.id == i['id'], {'used_at': now()})
-    set_session_cookie(response, create_session(u['id'], not u['twofa_enabled']))
+    set_session_cookie(response, create_session(u['id'], not u['twofa_enabled']), b.locale)
     cu = {**db.camel(u), 'status': 'active', 'locale': b.locale, 'twofaPassed': not u['twofa_enabled'], 'listingIds': [r['listing_id'] for r in db.all_(T.listing_access, T.listing_access.c.user_id == u['id'])]}
     audit(request, 'invite_accepted', 'user', u['id'], actor=cu)
     M = T.outreach_messages.c  # came in through an outreach email: the funnel shows “registered”

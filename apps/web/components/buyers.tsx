@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { moneyShort, date } from '@/lib/format';
+import { useT } from '@/components/lang';
 import { Icon, PropertyPicker, FeaturePicker, type Listing as AccessListing, type FeatureDef, type Preset } from '@/components/access';
 
 async function call(url: string, method = 'GET', json?: unknown, body?: BodyInit) {
@@ -138,10 +139,10 @@ export function DoNotContact({ id, on }: { id: string; on: boolean }) {
 
 /* ---------- Public: unsubscribe ---------- */
 export function Unsubscribe({ token, email, already }: { token: string; email: string; already: boolean }) {
-  const [done, setDone] = useState(already); const [err, setErr] = useState('');
+  const t = useT(); const [done, setDone] = useState(already); const [err, setErr] = useState('');
   useEffect(() => setDone(already), [already]);
-  return done ? <><h1>You are unsubscribed.</h1><p>{email} will not receive further emails from Maasland &amp; Partners about new opportunities.</p></>
-    : <><h1>Unsubscribe?</h1><p>Stop emails about new investment opportunities to {email}.</p><div className="row"><button className="btn navy" onClick={async () => { try { await call(`/api/m/${token}/unsubscribe`, 'POST', {}); setDone(true); } catch (e: any) { setErr(e.message); } }}>Unsubscribe ↗</button></div>{err && <p className="form-error">{err}</p>}</>;
+  return done ? <><h1>{t('You are unsubscribed.')}</h1><p>{t('{email} will not receive further emails from Maasland & Partners about new opportunities.', { email })}</p></>
+    : <><h1>{t('Unsubscribe?')}</h1><p>{t('Stop emails about new investment opportunities to {email}.', { email })}</p><div className="row"><button className="btn navy" onClick={async () => { try { await call(`/api/m/${token}/unsubscribe`, 'POST', {}); setDone(true); } catch (e: any) { setErr(e.message); } }}>{t('Unsubscribe')} ↗</button></div>{err && <p className="form-error">{err}</p>}</>;
 }
 
 /* ---------- Developer: which workspace sections admins see ---------- */

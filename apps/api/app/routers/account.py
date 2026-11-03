@@ -56,7 +56,7 @@ def login(request: Request, response: Response, body=Depends(json_body)):
         raise unauthorized('Your account is not active yet. Open the invitation link you received to set your password.' if u and u['status'] == 'invited' else 'Email or password is incorrect.')
     if u['status'] == 'suspended':
         audit(request, 'login_blocked', 'user', u['id'], actor=u); raise forbidden('Your access is paused. Please contact your account manager.')
-    set_session_cookie(response, create_session(u['id'], not u['twofaEnabled']))
+    set_session_cookie(response, create_session(u['id'], not u['twofaEnabled']), u['locale'])
     db.upd(T.users, T.users.c.id == u['id'], {'last_login_at': now()})
     audit(request, 'login', 'user', u['id'], actor=u)
     u['listingIds'] = [r['listing_id'] for r in db.all_(T.listing_access, T.listing_access.c.user_id == u['id'])]; u['twofaPassed'] = not u['twofaEnabled']
