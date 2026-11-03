@@ -1,0 +1,63 @@
+/* Dutch translations, English text is the key. */
+const NL: Record<string, string> = {
+  // Import (components/buyers.tsx ImportBox)
+  'Buildings (properties export)': 'Panden (export objecten)', 'Companies (owners export)': 'Bedrijven (export eigenaren)', 'Company ↔ building links': 'Koppelingen bedrijf ↔ pand', 'Contact persons': 'Contactpersonen', 'Reading…': 'Inlezen…',
+  'queued||import': 'in wachtrij', 'processing||import': 'wordt verwerkt', 'done||import': 'klaar', 'failed||import': 'mislukt',
+  'IMPORT': 'IMPORTEREN', 'Add or update data.': 'Gegevens toevoegen of bijwerken.',
+  'Drop the Kadaster exports (owners, owner_properties, properties) and contact lists. The type of each file is recognised from its columns; new batches update existing rows by BAG pand id and company name.': 'Sleep de Kadaster-exports (owners, owner_properties, properties) en contactlijsten hierheen. Het soort bestand wordt herkend aan de kolommen; nieuwe batches werken bestaande rijen bij op BAG-pand-id en bedrijfsnaam.',
+  'Drop Excel or CSV files here': 'Sleep Excel- of CSV-bestanden hierheen', 'or click to choose · up to 25 MB each': 'of klik om te kiezen · max. 25 MB per bestand', 'Remove {name}': '{name} verwijderen',
+  '{n} rows': '{n} rijen', '{n} new||rows': '{n} nieuw', '{n} updated': '{n} bijgewerkt', '{n} skipped': '{n} overgeslagen', '{n} problem': '{n} probleem', '{n} problems': '{n} problemen',
+  'Importing…': 'Bezig met importeren…', 'Import files': 'Bestanden importeren', 'Import 1 file': '1 bestand importeren', 'Import {n} files': '{n} bestanden importeren', 'Contacts template (.xlsx)': 'Sjabloon contactpersonen (.xlsx)',
+  // Potential buyers (BuyerFinder)
+  '{n} without email contact': '{n} zonder contactpersoon met e-mailadres', '{n} unsubscribed': '{n} afgemeld', '{n} already emailed': '{n} al gemaild', '{n} marked do-not-contact': '{n} gemarkeerd als niet benaderen',
+  'Contacted||buyer': 'Benaderd', 'Interested||buyer': 'Geïnteresseerd', 'In talks||buyer': 'In gesprek', 'Customer||buyer': 'Klant', 'Not interested||buyer': 'Niet geïnteresseerd',
+  'Search companies': 'Bedrijven zoeken', 'With email contact': 'Met contactpersoon met e-mailadres', 'Hide already emailed': 'Al gemailde verbergen', 'Select top 25 with email': 'Top 25 met e-mailadres selecteren', 'Clear||selection': 'Wissen',
+  '{n} of {total} companies · ranked by location, property type, deal size, scale and buying activity': '{n} van {total} bedrijven · gerangschikt op locatie, objecttype, dealomvang, schaal en aankoopactiviteit',
+  'Select {name}': '{name} selecteren', 'Match score out of 100': 'Matchscore van 100', 'Do not contact': 'Niet benaderen', 'Emailed {date}': 'Gemaild op {date}',
+  '{n} contact': '{n} contactpersoon', '{n} contacts': '{n} contactpersonen', 'No email yet': 'Nog geen e-mailadres', 'Add contact': 'Contactpersoon toevoegen',
+  'No companies match.': 'Geen bedrijven gevonden.', 'Clear the filters.': 'Wis de filters.', 'Import the ownership exports under Buyers first.': 'Importeer eerst de eigendomsexports onder Kopers.',
+  'selected||count': 'geselecteerd', '1 email': '1 e-mail', '{n} emails': '{n} e-mails', 'Write the email ↓': 'Schrijf de e-mail ↓',
+  // Email composer
+  'Email to the selected companies': 'E-mail aan de geselecteerde bedrijven', 'EMAIL': 'E-MAIL',
+  '1 email queued.': '1 e-mail in de wachtrij gezet.', '{n} emails queued.': '{n} e-mails in de wachtrij gezet.',
+  'They go out in batches over the next minutes.': 'Ze worden de komende minuten in batches verzonden.',
+  'No mail server is connected yet, so sending is simulated: the emails appear in the outbox (Automation tab) and the tracking links work.': 'Er is nog geen mailserver gekoppeld, dus het verzenden wordt gesimuleerd: de e-mails verschijnen in de outbox (tabblad Automatisering) en de trackinglinks werken.',
+  'Skipped: {list}.': 'Overgeslagen: {list}.', 'Follow the results': 'Resultaten volgen', 'Email more buyers': 'Meer kopers mailen',
+  'company selected': 'bedrijf geselecteerd', 'companies selected': 'bedrijven geselecteerd', 'Email language': 'Taal van de e-mail',
+  'Subject': 'Onderwerp', 'Message||email': 'Bericht', 'Filled in per company:': 'Per bedrijf ingevuld:', 'is the personal invitation link. An unsubscribe line is added automatically.': 'is de persoonlijke uitnodigingslink. Een afmeldregel wordt automatisch toegevoegd.',
+  'ACCESS WHEN THEY OPEN THE LINK': 'TOEGANG BIJ HET OPENEN VAN DE LINK', '1 property': '1 object', '{n} properties': '{n} objecten', '1 feature': '1 functie', '{n} features': '{n} functies',
+  'Including future listings': 'Inclusief toekomstig aanbod', 'Choose||access': 'Kiezen',
+  'PREVIEW · 1 OF {count} · 1 COMPANY': 'VOORBEELD · 1 VAN {count} · 1 BEDRIJF', 'PREVIEW · 1 OF {count} · {n} COMPANIES': 'VOORBEELD · 1 VAN {count} · {n} BEDRIJVEN', 'To||recipient': 'Aan',
+  'Nobody to email in this selection: add contact persons with an email address first.': 'Niemand om te mailen in deze selectie: voeg eerst contactpersonen met een e-mailadres toe.',
+  'Preview': 'Voorbeeld', 'Queue emails': 'E-mails in wachtrij zetten', 'Queue 1 email': '1 e-mail in wachtrij zetten', 'Queue {n} emails': '{n} e-mails in wachtrij zetten',
+  'Sent from {from} in batches; replies go to you.': 'Verzonden vanaf {from} in batches; antwoorden komen bij u binnen.',
+  'Sending is simulated until a mail server (SMTP) is connected. Each email carries a personal link: opening it creates the invitation with access to this property only.': 'Het verzenden wordt gesimuleerd totdat er een mailserver (SMTP) is gekoppeld. Elke e-mail bevat een persoonlijke link: wie die opent, krijgt een uitnodiging met toegang tot alleen dit object.',
+  'Companies already emailed about this property are skipped.': 'Bedrijven die al over dit object zijn gemaild, worden overgeslagen.',
+  // Access drawer
+  'Access for the email link': 'Toegang via de e-maillink', 'ACCESS · SAME AS AN INVITATION': 'TOEGANG · ZELFDE ALS BIJ EEN UITNODIGING', 'What they get.': 'Wat ze krijgen.',
+  'Opening the link in the email creates their invitation with exactly these properties and features. {name} is always included. Change it later per person under People & access.': 'Wie de link in de e-mail opent, krijgt een uitnodiging met precies deze objecten en functies. {name} is altijd inbegrepen. U kunt dit later per persoon aanpassen onder Personen & toegang.',
+  'Properties they see': 'Objecten die ze zien', 'Features they can use': 'Functies die ze kunnen gebruiken', 'Use this access': 'Deze toegang gebruiken',
+  // Listing switch, do not contact
+  'Property': 'Object', 'Choose a property to find buyers…': 'Kies een object om kopers te zoeken…',
+  'Excluded from every email. Queued emails are cancelled.': 'Uitgesloten van elke e-mail. E-mails in de wachtrij worden geannuleerd.',
+  // Workspace tabs (developer settings) and staff menu
+  'Always on': 'Altijd aan', 'Show {tab} to admins': '{tab} tonen aan beheerders',
+  'People & access': 'Personen & toegang', 'Buyers': 'Kopers', 'Outreach': 'Benadering', 'Listings': 'Aanbod', 'Offers & deals': 'Biedingen & deals', 'Overview': 'Overzicht',
+  'Investors': 'Beleggers', 'Bid rounds': 'Inschrijvingen', 'Deal processes': 'Verkoopprocessen', 'Acquisitions': 'Acquisities', 'Compliance': 'Compliance', 'Automation': 'Automatisering', 'Integrations': 'Integraties', 'Settings': 'Instellingen',
+  'Invite investors and choose their properties and features.': 'Nodig beleggers uit en kies hun objecten en functies.',
+  'Kadaster import, company profiles, contact persons, potential buyers.': 'Kadaster-import, bedrijfsprofielen, contactpersonen, potentiële kopers.',
+  'Emails to buyers and their results; simulated outbox.': 'E-mails aan kopers en de resultaten; gesimuleerde outbox.',
+  'Properties, status and prices; Find buyers.': 'Objecten, status en prijzen; kopers zoeken.', 'Chat with invited investors.': 'Chatten met uitgenodigde beleggers.',
+  'Offers, deals and viewing requests.': 'Biedingen, deals en bezichtigingsaanvragen.', 'KPIs and funnel statistics.': "KPI's en funnelstatistieken.",
+  'Lead scores and activity per investor.': 'Leadscores en activiteit per belegger.', 'Sealed bid rounds with a deadline.': 'Gesloten inschrijvingen met een deadline.',
+  'Structured institutional sales with Q&A.': 'Gestructureerde institutionele verkopen met vraag en antwoord.', 'Pipeline of properties the company buys.': 'Pijplijn van objecten die het bedrijf aankoopt.',
+  'KYC checks (Wwft), unusual transactions, audit log.': 'KYC-controles (Wwft), ongebruikelijke transacties, auditlog.', 'Background rules, job queue, all outgoing email drafts.': 'Achtergrondregels, takenwachtrij, alle uitgaande e-mailconcepten.',
+  // New listing from BAG (components/client.tsx BagCreate)
+  'Look up the address in BAG first.': 'Zoek het adres eerst op in BAG.', 'Draft created from BAG data. Publish it below.': 'Concept aangemaakt met BAG-gegevens. Publiceer het hieronder.',
+  'NEW LISTING · BAG LOOKUP': 'NIEUW AANBOD · BAG-OPZOEKING', 'From postcode to listing.': 'Van postcode naar aanbod.', 'Postcode': 'Postcode', 'House number': 'Huisnummer', 'Look up in BAG': 'Opzoeken in BAG',
+  'Build year {year} · {area} m² · {units} units · {use} · label {label}': 'Bouwjaar {year} · {area} m² · {units} eenheden · {use} · label {label}',
+  'BAG fills build year, floor area, units, coordinates and energy label.': 'BAG vult bouwjaar, vloeroppervlak, eenheden, coördinaten en energielabel in.',
+  'Listing name': 'Naam van het aanbod', 'The Schiedam apartments': 'De Schiedamse appartementen', 'Collection': 'Collectie', 'Deal type': 'Dealtype',
+  'Off-market · Pro first look 48 h': 'Off-market · Pro ziet het 48 uur eerder', 'Asking price k.k. (€)': 'Vraagprijs k.k. (€)', 'Annual rent (€)': 'Jaarhuur (€)', 'Create draft': 'Concept aanmaken',
+};
+export default NL;

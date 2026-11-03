@@ -12,7 +12,7 @@ export default async function Invite({ params }: { params: Promise<{ token: stri
     <div className="row"><Link className="btn navy" href="/login">{t('Log in')} ↗</Link><Link className="btn outline" href="/#request">{t('Request access')}</Link></div></div></section>;
   if (me.user) redirect('/');
   const d = r.data;
-  return <section className="invite-page"><div className="invite-welcome"><p className="eyebrow light">{t('PERSONAL INVITATION · VALID UNTIL {date}', { date: date(d.expiresAt).toUpperCase() })}</p>
+  return <section className="invite-page"><div className="invite-welcome"><p className="eyebrow light">{t('PERSONAL INVITATION · VALID UNTIL {date}', { date: date(d.expiresAt, t).toUpperCase() })}</p>
       <h1>{t('Welcome, {name}.', { name: d.name.split(' ')[0] })}</h1><p className="lead-light">{d.companyName ? t('{by} invited you to Maasland & Partners on behalf of {company}.', { by: d.invitedBy, company: d.companyName }) : t('{by} invited you to Maasland & Partners.', { by: d.invitedBy })}</p>
       {d.message && <blockquote>“{d.message}”<cite>— {d.invitedBy}</cite></blockquote>}
       <div className="inv-grid"><div className="inv-stat"><b>{d.staff ? 'All' : d.listings === 'all' ? t('All') : d.listings}</b><span>{d.staff ? `properties · ${d.roleLabel} role` : d.listings === 'all' ? t('properties, including new ones') : t(d.listings === 1 ? 'property selected for you' : 'properties selected for you')}</span></div>

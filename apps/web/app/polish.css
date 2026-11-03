@@ -33,7 +33,7 @@ td small,.document-row small{font-size:11px}
 
 /* Developer: sections hidden from admins stay readable, marked instead of faded */
 .ws-tabs a.off{opacity:1;color:var(--muted);font-style:italic}
-.ws-tabs a.off::after{content:' · hidden';font-size:11px;font-style:normal}
+.ws-tabs a.off::after{content:' · ' attr(data-hidden);font-size:11px;font-style:normal}
 
 /* Compact workspace heading: staff get to their work faster */
 .workspace-heading{padding-top:34px;padding-bottom:6px}

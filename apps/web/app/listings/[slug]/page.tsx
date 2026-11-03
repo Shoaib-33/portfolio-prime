@@ -100,7 +100,7 @@ function Sidebar({ l, me, t, buyerFee }: { l: any; me: Me; t: T; buyerFee: numbe
   if (l.status === 'coming_soon') primary = <p className="note">{t('Coming soon. Save it to be alerted at launch.')}</p>;
   else if (l.status !== 'available') primary = <p className="note">{t(STATUS[l.status])}. {t('Save a search to hear about similar properties.')}</p>;
   else if (!u) primary = <Link className="btn navy" href={`/login?next=/listings/${l.slug}`}>{t('Request access')} ↗</Link>;
-  else if (u.staff) primary = <Link className="btn navy" href="/admin?tab=offers">Open in staff workspace ↗</Link>;
+  else if (u.staff) primary = <Link className="btn navy" href="/admin?tab=offers">{t('Open in staff workspace')} ↗</Link>;
   else if (!u.verified) primary = me.kyc?.status === 'pending' ? <p className="note">{t('Your verification is being reviewed.')}</p> : <Link className="btn navy" href="/account/verify">{t('Verify to make offers')} ↗</Link>;
   else if (l.dealType === 'institutional') primary = can(me, 'institutional') ? <Link className="btn navy" href={`/listings/${l.slug}?tab=process`}>{t('Open the sale process')} ↗</Link> : <p className="note">{t('Bids for this portfolio go through your account manager.')}</p>;
   else if (!can(me, 'offers')) primary = <p className="note">{t('Interested? Your account manager handles offers on this property for you.')}</p>;

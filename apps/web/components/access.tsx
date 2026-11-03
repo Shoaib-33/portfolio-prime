@@ -40,48 +40,48 @@ export function Icon({ name }: { name: string }) {
 const FEATURE_ICON: Record<string, string> = { map: 'map', finder: 'target', market: 'chart', analysis: 'doc', analyst: 'spark', dataroom: 'lock', institutional: 'vault', offers: 'key', messages: 'chat', membership: 'star', sell: 'home' };
 
 export function CopyField({ value, label = 'Copy' }: { value: string; label?: string }) {
-  const [done, setDone] = useState(false);
+  const t = useT(); const [done, setDone] = useState(false);
   const copy = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const input = e.currentTarget.parentElement?.querySelector('input'); try { await navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1800); } catch { input?.select(); }
   };
-  return <div className="copy-field"><input readOnly value={value} onFocus={e => e.currentTarget.select()} aria-label="Link" /><button type="button" className="btn small navy" onClick={copy}><Icon name={done ? 'check' : 'copy'} />{done ? 'Copied' : label}</button></div>;
+  return <div className="copy-field"><input readOnly value={value} onFocus={e => e.currentTarget.select()} aria-label="Link" /><button type="button" className="btn small navy" onClick={copy}><Icon name={done ? 'check' : 'copy'} />{done ? t('Copied') : t(label)}</button></div>;
 }
 
 export function PropertyPicker({ listings, scope, setScope, ids, setIds }: { listings: Listing[]; scope: string; setScope: (s: string) => void; ids: Set<string>; setIds: (s: Set<string>) => void }) {
-  const [q, setQ] = useState(''); const shown = listings.filter(l => !q || `${l.name} ${l.city} ${l.district || ''} ${l.propertyType} ${DEAL[l.dealType]}`.toLowerCase().includes(q.toLowerCase()));
+  const t = useT(); const [q, setQ] = useState(''); const shown = listings.filter(l => !q || `${l.name} ${l.city} ${l.district || ''} ${l.propertyType} ${DEAL[l.dealType]}`.toLowerCase().includes(q.toLowerCase()));
   const toggle = (id: string) => { const n = new Set(ids); n.has(id) ? n.delete(id) : n.add(id); setIds(n); };
   return <div className="picker">
-    <div className="scope-seg" role="radiogroup" aria-label="Which properties">
-      <button type="button" role="radio" aria-checked={scope === 'selected'} onClick={() => setScope('selected')}><b>Selected properties</b><small>Only what you tick below</small></button>
-      <button type="button" role="radio" aria-checked={scope === 'all'} onClick={() => setScope('all')}><b>All properties</b><small>Including future listings</small></button>
+    <div className="scope-seg" role="radiogroup" aria-label={t('Which properties')}>
+      <button type="button" role="radio" aria-checked={scope === 'selected'} onClick={() => setScope('selected')}><b>{t('Selected properties')}</b><small>{t('Only what you tick below')}</small></button>
+      <button type="button" role="radio" aria-checked={scope === 'all'} onClick={() => setScope('all')}><b>{t('All properties')}</b><small>{t('Including future listings')}</small></button>
     </div>
     {scope === 'selected' ? <>
-      <div className="picker-bar"><label className="search-in"><Icon name="search" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, city or type" aria-label="Search properties" /></label>
-        <span className="count-chip">{ids.size} of {listings.length} selected</span>
-        <button type="button" className="link-button" onClick={() => setIds(new Set([...ids, ...shown.map(l => l.id)]))}>Select {q ? 'shown' : 'all'}</button><button type="button" className="link-button" onClick={() => setIds(new Set())}>Clear</button></div>
+      <div className="picker-bar"><label className="search-in"><Icon name="search" /><input value={q} onChange={e => setQ(e.target.value)} placeholder={t('Search by name, city or type')} aria-label={t('Search properties')} /></label>
+        <span className="count-chip">{t('{n} of {total} selected', { n: ids.size, total: listings.length })}</span>
+        <button type="button" className="link-button" onClick={() => setIds(new Set([...ids, ...shown.map(l => l.id)]))}>{q ? t('Select shown') : t('Select all')}</button><button type="button" className="link-button" onClick={() => setIds(new Set())}>{t('Clear')}</button></div>
       <div className="prop-grid">{shown.map(l => { const on = ids.has(l.id); return <button type="button" key={l.id} className={`prop-tile ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => toggle(l.id)}>
         <span className="pt-img"><img src={imgSrc(l.image)} alt="" /><i className="pt-check"><Icon name="check" /></i></span>
-        <span className="pt-body"><b>{l.name}</b><small>{l.city}{l.district ? ` · ${l.district}` : ''}</small><span className="pt-meta"><em>{moneyShort(l.askingPrice)}</em>{l.units > 1 ? <em>{l.units} units</em> : null}<em className={`deal-${l.dealType}`}>{DEAL[l.dealType]}</em>{l.source === 'crm' && <em className="crm">CRM</em>}{l.status !== 'available' && <em className="muted">{l.status.replace('_', ' ')}</em>}</span></span></button>; })}
-        {!shown.length && <p className="muted-small">No properties match “{q}”.</p>}</div></>
-      : <div className="note soft"><Icon name="bolt" /> This person sees every live property, including listings the CRM adds later. Use it for partners and senior buyers.</div>}
+        <span className="pt-body"><b>{l.name}</b><small>{l.city}{l.district ? ` · ${l.district}` : ''}</small><span className="pt-meta"><em>{moneyShort(l.askingPrice)}</em>{l.units > 1 ? <em>{t('{n} units', { n: l.units })}</em> : null}<em className={`deal-${l.dealType}`}>{t(DEAL[l.dealType])}</em>{l.source === 'crm' && <em className="crm">CRM</em>}{l.status !== 'available' && <em className="muted">{t(l.status.replace('_', ' '))}</em>}</span></span></button>; })}
+        {!shown.length && <p className="muted-small">{t('No properties match “{q}”.', { q })}</p>}</div></>
+      : <div className="note soft"><Icon name="bolt" /> {t('This person sees every live property, including listings the CRM adds later. Use it for partners and senior buyers.')}</div>}
   </div>;
 }
 
 export function FeaturePicker({ features, presets, on, setOn }: { features: FeatureDef[]; presets: Preset[]; on: Set<string>; setOn: (s: Set<string>) => void }) {
-  const groups = [...new Set(features.map(f => f.group))]; const active = presets.find(p => p.features.length === on.size && p.features.every(k => on.has(k)))?.key;
+  const t = useT(); const groups = [...new Set(features.map(f => f.group))]; const active = presets.find(p => p.features.length === on.size && p.features.every(k => on.has(k)))?.key;
   const toggle = (k: string) => { const n = new Set(on); n.has(k) ? n.delete(k) : n.add(k); setOn(n); };
   return <div className="fpick">
-    <div className="presets"><span>Quick start</span>{presets.map(p => <button type="button" key={p.key} className={`preset ${active === p.key ? 'on' : ''}`} title={p.desc} onClick={() => setOn(new Set(p.features))}>{p.label}</button>)}<button type="button" className="preset ghost" onClick={() => setOn(new Set())}>None</button></div>
-    {groups.map(g => <div key={g} className="fgroup"><p className="eyebrow">{g}</p><div className="fgrid">{features.filter(f => f.group === g).map(f => <label key={f.key} className={`ftoggle ${on.has(f.key) ? 'on' : ''}`}>
-      <span className="fi"><Icon name={FEATURE_ICON[f.key] || 'check'} /></span><span className="ft"><b>{f.label}</b><small>{f.desc}</small></span>
-      <input type="checkbox" className="switch" checked={on.has(f.key)} onChange={() => toggle(f.key)} aria-label={f.label} /></label>)}</div></div>)}
-    <p className="fine-print">Properties are always visible in “My selection”. Data room, offers and bids also need KYC verification; private deal rooms also need a qualified (institutional) investor type.</p>
+    <div className="presets"><span>{t('Quick start')}</span>{presets.map(p => <button type="button" key={p.key} className={`preset ${active === p.key ? 'on' : ''}`} title={t(p.desc)} onClick={() => setOn(new Set(p.features))}>{t(p.label)}</button>)}<button type="button" className="preset ghost" onClick={() => setOn(new Set())}>{t('None')}</button></div>
+    {groups.map(g => <div key={g} className="fgroup"><p className="eyebrow">{t(g)}</p><div className="fgrid">{features.filter(f => f.group === g).map(f => <label key={f.key} className={`ftoggle ${on.has(f.key) ? 'on' : ''}`}>
+      <span className="fi"><Icon name={FEATURE_ICON[f.key] || 'check'} /></span><span className="ft"><b>{t(f.label)}</b><small>{t(f.desc)}</small></span>
+      <input type="checkbox" className="switch" checked={on.has(f.key)} onChange={() => toggle(f.key)} aria-label={t(f.label)} /></label>)}</div></div>)}
+    <p className="fine-print">{t('Properties are always visible in “My selection”. Data room, offers and bids also need KYC verification; private deal rooms also need a qualified (institutional) investor type.')}</p>
   </div>;
 }
 
 /* ---------- Editor for one person ---------- */
 function Editor({ p, data, onSaved }: { p: Person; data: AccessData; onSaved: (msg: string) => void }) {
-  const router = useRouter();
+  const t = useT(); const router = useRouter(); const first = p.name.split(' ')[0];
   const [detail, setDetail] = useState<{ listingIds: string[] } | null>(null);
   const [scope, setScope] = useState(p.listingScope); const [ids, setIds] = useState<Set<string>>(new Set()); const [feat, setFeat] = useState<Set<string>>(new Set(p.features)); const [role, setRole] = useState(p.role);
   const [busy, setBusy] = useState(''); const [err, setErr] = useState(''); const [link, setLink] = useState('');
@@ -92,63 +92,63 @@ function Editor({ p, data, onSaved }: { p: Person; data: AccessData; onSaved: (m
   const locked = data.me.role !== 'developer' && p.role !== 'investor'; // admins manage investors; developers manage everyone
   const dirty = !!detail && (scope !== (detail as any).listingScope || role !== p.role || !same(ids, new Set(detail.listingIds)) || !same(feat, new Set((detail as any).staff ? [] : (detail as any).features)));
   const run = async (key: string, fn: () => Promise<any>, msg?: string) => { setBusy(key); setErr(''); try { const r = await fn(); if (msg) onSaved(msg); router.refresh(); return r; } catch (e: any) { setErr(e.message); } finally { setBusy(''); } };
-  const save = () => run('save', async () => { await call(`/api/admin/access/users/${p.id}`, 'PUT', { role, listingScope: scope, listingIds: [...ids], features: [...feat] }); setDetail({ ...(detail as any), listingIds: [...ids], listingScope: scope, features: [...feat], staff: staffRole }); }, `Access for ${p.name} saved. It applies on their next click.`);
+  const save = () => run('save', async () => { await call(`/api/admin/access/users/${p.id}`, 'PUT', { role, listingScope: scope, listingIds: [...ids], features: [...feat] }); setDetail({ ...(detail as any), listingIds: [...ids], listingScope: scope, features: [...feat], staff: staffRole }); }, t('Access for {name} saved. It applies on their next click.', { name: p.name }));
   const [label, cls] = statusOf(p);
   return <div className="editor">
     <div className="ed-head"><span className={`avatar-lg ${p.staff ? 'staff' : ''}`}>{initials(p.name)}</span><div className="ed-id"><h3>{p.name}</h3><p>{p.companyName ? `${p.companyName} · ` : ''}{p.email}</p>
-      <div className="row tight wrap"><span className={`status-chip ${cls}`}><i />{label}</span>{!p.staff && p.tierLabel && <span className="chip">{p.tierLabel}</span>}{!p.staff && <span className="chip">{p.investorType}</span>}{p.lastLoginAt && <span className="chip ghost">Last seen {dateTime(p.lastLoginAt)}</span>}</div></div>
-      <label className="role-select">Role<select value={role} disabled={locked} onChange={e => setRole(e.target.value)}>{data.roles.map(r => <option key={r.key} value={r.key} disabled={!r.assignable}>{r.label}</option>)}</select></label></div>
+      <div className="row tight wrap"><span className={`status-chip ${cls}`}><i />{t(label)}</span>{!p.staff && p.tierLabel && <span className="chip">{t(p.tierLabel)}</span>}{!p.staff && <span className="chip">{t(p.investorType)}</span>}{p.lastLoginAt && <span className="chip ghost">{t('Last seen {when}', { when: dateTime(p.lastLoginAt, t) })}</span>}</div></div>
+      <label className="role-select">{t('Role')}<select value={role} disabled={locked} onChange={e => setRole(e.target.value)}>{data.roles.map(r => <option key={r.key} value={r.key} disabled={!r.assignable}>{t(`${r.label}||role`)}</option>)}</select></label></div>
 
-    {p.status === 'invited' && <div className="invite-box"><div><b><Icon name="mail" /> {p.invite?.state === 'pending' ? `Invitation valid until ${date(p.invite.expiresAt)}` : 'The invitation link no longer works'}</b><small>Links are personal and work once. Creating a new one stops the old link.</small></div>
-      <div className="row tight"><button type="button" className="btn small navy" disabled={!!busy} onClick={() => run('link', async () => { const r = await call(`/api/admin/access/users/${p.id}/invite`, 'POST', {}); setLink(window.location.origin + r.path); })}><Icon name="link" />{busy === 'link' ? 'Creating…' : 'New invitation link'}</button>
-        {p.invite?.state === 'pending' && <button type="button" className="btn small outline" disabled={!!busy} onClick={() => run('revoke', () => call(`/api/admin/access/users/${p.id}/revoke-invite`, 'POST'), 'Invitation revoked.')}>Revoke</button>}</div>
-      {link && <div className="link-out"><CopyField value={link} label="Copy link" /><small>Share this link with {p.name.split(' ')[0]} by email or WhatsApp. It is shown once.</small></div>}</div>}
+    {p.status === 'invited' && <div className="invite-box"><div><b><Icon name="mail" /> {p.invite?.state === 'pending' ? t('Invitation valid until {date}', { date: date(p.invite.expiresAt, t) }) : t('The invitation link no longer works')}</b><small>{t('Links are personal and work once. Creating a new one stops the old link.')}</small></div>
+      <div className="row tight"><button type="button" className="btn small navy" disabled={!!busy} onClick={() => run('link', async () => { const r = await call(`/api/admin/access/users/${p.id}/invite`, 'POST', {}); setLink(window.location.origin + r.path); })}><Icon name="link" />{busy === 'link' ? t('Creating…') : t('New invitation link')}</button>
+        {p.invite?.state === 'pending' && <button type="button" className="btn small outline" disabled={!!busy} onClick={() => run('revoke', () => call(`/api/admin/access/users/${p.id}/revoke-invite`, 'POST'), t('Invitation revoked.'))}>{t('Revoke')}</button>}</div>
+      {link && <div className="link-out"><CopyField value={link} label="Copy link" /><small>{t('Share this link with {name} by email or WhatsApp. It is shown once.', { name: first })}</small></div>}</div>}
 
-    {staffRole ? <div className="note soft"><Icon name="users" /> {role === 'developer' ? 'Developers can do everything: the staff workspace, people & access, and the CRM & API settings.' : 'Admins see every property, invite and manage investors, and run the staff workspace.'}{locked ? ' Only a developer can change this account.' : ''}</div>
+    {staffRole ? <div className="note soft"><Icon name="users" /> {role === 'developer' ? t('Developers can do everything: the staff workspace, people & access, and the CRM & API settings.') : t('Admins see every property, invite and manage investors, and run the staff workspace.')}{locked ? ' ' + t('Only a developer can change this account.') : ''}</div>
       : !detail ? <div className="skeleton" aria-busy="true"><i /><i /><i /></div> : <>
-        <section className="ed-sec"><div className="ed-sec-h"><span className="num">1</span><div><h4>Properties</h4><p>What {p.name.split(' ')[0]} sees in their selection.</p></div></div><PropertyPicker listings={data.listings} scope={scope} setScope={setScope} ids={ids} setIds={setIds} /></section>
-        <section className="ed-sec"><div className="ed-sec-h"><span className="num">2</span><div><h4>Features</h4><p>Menu items and tools that are switched on. Everything else stays hidden.</p></div></div><FeaturePicker features={data.features} presets={data.presets} on={feat} setOn={setFeat} /></section></>}
+        <section className="ed-sec"><div className="ed-sec-h"><span className="num">1</span><div><h4>{t('Properties||section')}</h4><p>{t('What {name} sees in their selection.', { name: first })}</p></div></div><PropertyPicker listings={data.listings} scope={scope} setScope={setScope} ids={ids} setIds={setIds} /></section>
+        <section className="ed-sec"><div className="ed-sec-h"><span className="num">2</span><div><h4>{t('Features')}</h4><p>{t('Menu items and tools that are switched on. Everything else stays hidden.')}</p></div></div><FeaturePicker features={data.features} presets={data.presets} on={feat} setOn={setFeat} /></section></>}
 
-    {!locked && <div className={`save-bar ${dirty ? 'dirty' : ''}`}><span>{dirty ? 'Unsaved changes' : 'All changes saved'}</span>{err && <small className="form-error">{err}</small>}
-      <div className="row tight">{p.status !== 'invited' && p.id && <button type="button" className="btn small outline" disabled={!!busy} onClick={() => run('status', () => call(`/api/admin/access/users/${p.id}/status`, 'POST', { status: p.status === 'suspended' ? 'active' : 'suspended' }), p.status === 'suspended' ? `${p.name} can log in again.` : `${p.name} is signed out and paused.`)}><Icon name={p.status === 'suspended' ? 'play' : 'pause'} />{p.status === 'suspended' ? 'Resume access' : 'Pause access'}</button>}
-        <button type="button" className="btn small navy" disabled={!dirty || !!busy} onClick={save}>{busy === 'save' ? 'Saving…' : 'Save access'}</button></div></div>}
+    {!locked && <div className={`save-bar ${dirty ? 'dirty' : ''}`}><span>{dirty ? t('Unsaved changes') : t('All changes saved')}</span>{err && <small className="form-error">{err}</small>}
+      <div className="row tight">{p.status !== 'invited' && p.id && <button type="button" className="btn small outline" disabled={!!busy} onClick={() => run('status', () => call(`/api/admin/access/users/${p.id}/status`, 'POST', { status: p.status === 'suspended' ? 'active' : 'suspended' }), p.status === 'suspended' ? t('{name} can log in again.', { name: p.name }) : t('{name} is signed out and paused.', { name: p.name }))}><Icon name={p.status === 'suspended' ? 'play' : 'pause'} />{p.status === 'suspended' ? t('Resume access') : t('Pause access')}</button>}
+        <button type="button" className="btn small navy" disabled={!dirty || !!busy} onClick={save}>{busy === 'save' ? t('Saving…') : t('Save access')}</button></div></div>}
   </div>;
 }
 const same = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every(x => b.has(x));
 
 /* ---------- Invite drawer ---------- */
 function InviteDrawer({ data, prefill, onClose }: { data: AccessData; prefill?: Partial<{ name: string; email: string; companyName: string }>; onClose: () => void }) {
-  const router = useRouter();
+  const t = useT(); const router = useRouter();
   const [role, setRole] = useState('investor'); const [scope, setScope] = useState('selected'); const [ids, setIds] = useState<Set<string>>(new Set()); const [feat, setFeat] = useState<Set<string>>(new Set(data.presets.find(p => p.key === 'buyer')?.features));
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [done, setDone] = useState<null | { link: string; expiresAt: string; name: string; email: string }>(null);
   const staffRole = data.roles.find(r => r.key === role)?.staff;
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const f = e.currentTarget; if (!f.reportValidity()) return; const fd = new FormData(f); setBusy(true); setErr('');
-    if (!staffRole && scope === 'selected' && !ids.size) { setErr('Choose at least one property, or select “All properties”.'); setBusy(false); return; }
+    if (!staffRole && scope === 'selected' && !ids.size) { setErr(t('Choose at least one property, or select “All properties”.')); setBusy(false); return; }
     try { const r = await call('/api/admin/access/invites', 'POST', { ...Object.fromEntries(fd), role, listingScope: staffRole ? 'all' : scope, listingIds: [...ids], features: staffRole ? [] : [...feat] });
       setDone({ link: window.location.origin + r.path, expiresAt: r.expiresAt, name: String(fd.get('name')), email: String(fd.get('email')) }); router.refresh(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
   }
-  return <div className="drawer-wrap" role="dialog" aria-modal="true" aria-label="Invite someone" onKeyDown={e => e.key === 'Escape' && onClose()}><button className="drawer-backdrop" aria-label="Close" onClick={onClose} />
-    <div className="drawer">{done ? <div className="invite-done"><span className="done-mark"><Icon name="check" /></span><p className="eyebrow">INVITATION CREATED</p><h2>{done.name} can join now.</h2>
-      <p>Send this personal link to {done.email}. It works once and expires on {date(done.expiresAt)}. A draft email with the link is in the outbox.</p><CopyField value={done.link} label="Copy link" />
-      <div className="row"><button className="btn navy" onClick={onClose}>Done</button><button className="btn outline" onClick={() => { setDone(null); setIds(new Set()); }}>Invite someone else</button></div></div>
-      : <form onSubmit={submit} noValidate={false}><div className="drawer-head"><div><p className="eyebrow">NEW INVITATION</p><h2>Invite someone.</h2><p>They get a personal link, set a password and see only what you choose here.</p></div><button type="button" className="icon-btn" aria-label="Close" onClick={onClose}><Icon name="x" /></button></div>
-        <section className="ed-sec"><div className="ed-sec-h"><span className="num">1</span><div><h4>Who</h4></div></div>
-          <div className="form-grid"><label>Full name<input name="name" required minLength={2} defaultValue={prefill?.name} autoFocus /></label><label>Email<input name="email" type="email" required defaultValue={prefill?.email} /></label>
-            <label>Company<input name="companyName" maxLength={120} defaultValue={prefill?.companyName} /></label><label>Role<select value={role} onChange={e => setRole(e.target.value)}>{data.roles.filter(r => r.assignable).map(r => <option key={r.key} value={r.key}>{r.label}</option>)}</select></label>
-            {!staffRole && <><label>Investor type<select name="investorType" defaultValue="Private BV">{data.investorTypes.map(t => <option key={t}>{t}</option>)}</select></label><label>Country<select name="country" defaultValue="NL">{[['NL', 'Netherlands'], ['BE', 'Belgium'], ['DE', 'Germany'], ['GB', 'United Kingdom'], ['FR', 'France'], ['LU', 'Luxembourg'], ['DK', 'Denmark'], ['AE', 'United Arab Emirates'], ['US', 'United States']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label></>}</div></section>
-        {staffRole ? <div className="note soft"><Icon name="users" /> {role === 'developer' ? 'A developer can do everything, including CRM & API settings.' : 'An admin sees every property, invites investors and runs the staff workspace.'}</div> : <>
-          <section className="ed-sec"><div className="ed-sec-h"><span className="num">2</span><div><h4>Properties they see</h4></div></div><PropertyPicker listings={data.listings} scope={scope} setScope={setScope} ids={ids} setIds={setIds} /></section>
-          <section className="ed-sec"><div className="ed-sec-h"><span className="num">3</span><div><h4>Features they can use</h4></div></div><FeaturePicker features={data.features} presets={data.presets} on={feat} setOn={setFeat} /></section></>}
-        <section className="ed-sec"><div className="ed-sec-h"><span className="num">{staffRole ? 2 : 4}</span><div><h4>Invitation</h4></div></div>
-          <div className="form-grid"><label>Link valid for<select name="expiresDays" defaultValue="14"><option value="3">3 days</option><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option></select></label>
-            <label className="span2">Personal note (optional, shown on the invitation page)<textarea name="message" maxLength={1000} placeholder="As discussed: three assets that fit your Randstad mandate." /></label></div></section>
-        <div className="drawer-foot">{err && <p className="form-error">{err}</p>}<span className="muted-small">{staffRole ? 'Staff role' : scope === 'all' ? 'All properties' : `${ids.size} propert${ids.size === 1 ? 'y' : 'ies'}`}{!staffRole && ` · ${feat.size} feature${feat.size === 1 ? '' : 's'}`}</span><button type="submit" className="btn navy" disabled={busy}><Icon name="link" />{busy ? 'Creating…' : 'Create invitation link'}</button></div></form>}</div></div>;
+  return <div className="drawer-wrap" role="dialog" aria-modal="true" aria-label={t('Invite someone')} onKeyDown={e => e.key === 'Escape' && onClose()}><button className="drawer-backdrop" aria-label={t('Close')} onClick={onClose} />
+    <div className="drawer">{done ? <div className="invite-done"><span className="done-mark"><Icon name="check" /></span><p className="eyebrow">{t('INVITATION CREATED')}</p><h2>{t('{name} can join now.', { name: done.name })}</h2>
+      <p>{t('Send this personal link to {email}. It works once and expires on {date}. A draft email with the link is in the outbox.', { email: done.email, date: date(done.expiresAt, t) })}</p><CopyField value={done.link} label="Copy link" />
+      <div className="row"><button className="btn navy" onClick={onClose}>{t('Done')}</button><button className="btn outline" onClick={() => { setDone(null); setIds(new Set()); }}>{t('Invite someone else')}</button></div></div>
+      : <form onSubmit={submit} noValidate={false}><div className="drawer-head"><div><p className="eyebrow">{t('NEW INVITATION')}</p><h2>{t('Invite someone.')}</h2><p>{t('They get a personal link, set a password and see only what you choose here.')}</p></div><button type="button" className="icon-btn" aria-label={t('Close')} onClick={onClose}><Icon name="x" /></button></div>
+        <section className="ed-sec"><div className="ed-sec-h"><span className="num">1</span><div><h4>{t('Who')}</h4></div></div>
+          <div className="form-grid"><label>{t('Full name')}<input name="name" required minLength={2} defaultValue={prefill?.name} autoFocus /></label><label>{t('Email')}<input name="email" type="email" required defaultValue={prefill?.email} /></label>
+            <label>{t('Company')}<input name="companyName" maxLength={120} defaultValue={prefill?.companyName} /></label><label>{t('Role')}<select value={role} onChange={e => setRole(e.target.value)}>{data.roles.filter(r => r.assignable).map(r => <option key={r.key} value={r.key}>{t(`${r.label}||role`)}</option>)}</select></label>
+            {!staffRole && <><label>{t('Investor type')}<select name="investorType" defaultValue="Private BV">{data.investorTypes.map(x => <option key={x} value={x}>{t(x)}</option>)}</select></label><label>{t('Country')}<select name="country" defaultValue="NL">{[['NL', 'Netherlands'], ['BE', 'Belgium'], ['DE', 'Germany'], ['GB', 'United Kingdom'], ['FR', 'France'], ['LU', 'Luxembourg'], ['DK', 'Denmark'], ['AE', 'United Arab Emirates'], ['US', 'United States']].map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</select></label></>}</div></section>
+        {staffRole ? <div className="note soft"><Icon name="users" /> {role === 'developer' ? t('A developer can do everything, including CRM & API settings.') : t('An admin sees every property, invites investors and runs the staff workspace.')}</div> : <>
+          <section className="ed-sec"><div className="ed-sec-h"><span className="num">2</span><div><h4>{t('Properties they see')}</h4></div></div><PropertyPicker listings={data.listings} scope={scope} setScope={setScope} ids={ids} setIds={setIds} /></section>
+          <section className="ed-sec"><div className="ed-sec-h"><span className="num">3</span><div><h4>{t('Features they can use')}</h4></div></div><FeaturePicker features={data.features} presets={data.presets} on={feat} setOn={setFeat} /></section></>}
+        <section className="ed-sec"><div className="ed-sec-h"><span className="num">{staffRole ? 2 : 4}</span><div><h4>{t('Invitation')}</h4></div></div>
+          <div className="form-grid"><label>{t('Link valid for')}<select name="expiresDays" defaultValue="14">{[3, 7, 14, 30].map(n => <option key={n} value={String(n)}>{t('{n} days', { n })}</option>)}</select></label>
+            <label className="span2">{t('Personal note (optional, shown on the invitation page)')}<textarea name="message" maxLength={1000} placeholder={t('As discussed: three assets that fit your Randstad mandate.')} /></label></div></section>
+        <div className="drawer-foot">{err && <p className="form-error">{err}</p>}<span className="muted-small">{staffRole ? t('Staff role') : scope === 'all' ? t('All properties') : t(ids.size === 1 ? '{n} property' : '{n} properties', { n: ids.size })}{!staffRole && ` · ${t(feat.size === 1 ? '{n} feature' : '{n} features', { n: feat.size })}`}</span><button type="submit" className="btn navy" disabled={busy}><Icon name="link" />{busy ? t('Creating…') : t('Create invitation link')}</button></div></form>}</div></div>;
 }
 
 /* ---------- The tab ---------- */
 export function AccessManager({ data, meId }: { data: AccessData; meId: string }) {
-  const router = useRouter();
+  const t = useT(); const router = useRouter();
   const [q, setQ] = useState(''); const [filter, setFilter] = useState('all'); const [sel, setSel] = useState<string>(() => data.users.find(u => !u.staff)?.id || data.users[0]?.id);
   const [drawer, setDrawer] = useState<null | Partial<{ name: string; email: string; companyName: string }>>(null); const [toast, setToast] = useState('');
   const counts = { all: data.users.length, investors: data.users.filter(u => !u.staff).length, staff: data.users.filter(u => u.staff).length, invited: data.users.filter(u => u.status === 'invited').length, paused: data.users.filter(u => u.status === 'suspended').length };
@@ -157,21 +157,21 @@ export function AccessManager({ data, meId }: { data: AccessData; meId: string }
   const person = data.users.find(u => u.id === sel); const openReq = data.requests.filter(r => r.status === 'new' && !r.invited);
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500); };
   return <div className="access">
-    <div className="access-top"><div><p className="eyebrow">INVITE-ONLY ACCESS</p><h2>People &amp; access.</h2><p className="muted-small">Choose per person which properties and which features they see. Visitors only see the public company pages.</p></div>
-      <button className="btn navy" onClick={() => setDrawer({})}><Icon name="plus" />Invite someone</button></div>
-    <div className="stat-row"><div><b>{data.users.filter(u => !u.staff && u.status === 'active').length}</b><span>Investors with access</span></div><div><b>{counts.invited}</b><span>Invitations pending</span></div><div><b>{openReq.length}</b><span>Access requests</span></div><div><b>{data.listings.filter(l => l.sharedWith > 0).length}<small>/{data.listings.length}</small></b><span>Properties shared</span></div></div>
+    <div className="access-top"><div><p className="eyebrow">{t('INVITE-ONLY ACCESS')}</p><h2>{t('People & access.')}</h2><p className="muted-small">{t('Choose per person which properties and which features they see. Visitors only see the public company pages.')}</p></div>
+      <button className="btn navy" onClick={() => setDrawer({})}><Icon name="plus" />{t('Invite someone')}</button></div>
+    <div className="stat-row"><div><b>{data.users.filter(u => !u.staff && u.status === 'active').length}</b><span>{t('Investors with access')}</span></div><div><b>{counts.invited}</b><span>{t('Invitations pending')}</span></div><div><b>{openReq.length}</b><span>{t('Access requests')}</span></div><div><b>{data.listings.filter(l => l.sharedWith > 0).length}<small>/{data.listings.length}</small></b><span>{t('Properties shared')}</span></div></div>
 
-    {openReq.length > 0 && <div className="requests"><p className="eyebrow">ACCESS REQUESTS FROM THE WEBSITE</p>{openReq.map(r => <div key={r.id} className="req"><span className="avatar">{initials(r.name)}</span><div><b>{r.name}</b><small>{r.email} · {dateTime(r.createdAt)}</small><p>{r.message}</p></div>
-      <div className="row tight"><button className="btn small navy" onClick={() => setDrawer({ name: r.name, email: r.email, companyName: (r.message || '').split(' · ')[0] })}>Invite</button><button className="btn small outline" onClick={async () => { await call(`/api/admin/access/requests/${r.id}/status`, 'POST', { status: 'closed' }); router.refresh(); }}>Dismiss</button></div></div>)}</div>}
+    {openReq.length > 0 && <div className="requests"><p className="eyebrow">{t('ACCESS REQUESTS FROM THE WEBSITE')}</p>{openReq.map(r => <div key={r.id} className="req"><span className="avatar">{initials(r.name)}</span><div><b>{r.name}</b><small>{r.email} · {dateTime(r.createdAt, t)}</small><p>{r.message}</p></div>
+      <div className="row tight"><button className="btn small navy" onClick={() => setDrawer({ name: r.name, email: r.email, companyName: (r.message || '').split(' · ')[0] })}>{t('Invite')}</button><button className="btn small outline" onClick={async () => { await call(`/api/admin/access/requests/${r.id}/status`, 'POST', { status: 'closed' }); router.refresh(); }}>{t('Dismiss')}</button></div></div>)}</div>}
 
     <div className="access-grid"><div className="people">
-      <label className="search-in"><Icon name="search" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search people" aria-label="Search people" /></label>
-      <div className="filters-pills" role="tablist">{(['all', 'investors', 'staff', 'invited', 'paused'] as const).map(k => <button key={k} role="tab" aria-selected={filter === k} onClick={() => setFilter(k)}>{k[0].toUpperCase() + k.slice(1)} <span>{counts[k]}</span></button>)}</div>
+      <label className="search-in"><Icon name="search" /><input value={q} onChange={e => setQ(e.target.value)} placeholder={t('Search people')} aria-label={t('Search people')} /></label>
+      <div className="filters-pills" role="tablist">{(['all', 'investors', 'staff', 'invited', 'paused'] as const).map(k => <button key={k} role="tab" aria-selected={filter === k} onClick={() => setFilter(k)}>{t(k[0].toUpperCase() + k.slice(1))} <span>{counts[k]}</span></button>)}</div>
       <ul className="people-list">{list.map(u => { const [label, cls] = statusOf(u); return <li key={u.id}><button className={sel === u.id ? 'on' : ''} onClick={() => setSel(u.id)}>
-        <span className={`avatar ${u.staff ? 'staff' : ''}`}>{initials(u.name)}</span><span className="pl-main"><b>{u.name}{u.id === meId ? ' (you)' : ''}</b><small>{u.companyName || u.email}</small></span>
-        <span className="pl-side"><span className={`status-dot ${cls}`} title={label} />{u.staff ? <em>{u.roleLabel}</em> : <em>{u.listingScope === 'all' ? 'All' : u.listingCount} prop · {u.features.length} tools</em>}</span></button></li>; })}
-        {!list.length && <li className="muted-small pad">Nobody matches.</li>}</ul></div>
-      <div className="editor-col">{person ? <Editor key={person.id} p={person} data={data} onSaved={say} /> : <div className="empty"><p>Select a person.</p></div>}</div></div>
+        <span className={`avatar ${u.staff ? 'staff' : ''}`}>{initials(u.name)}</span><span className="pl-main"><b>{u.name}{u.id === meId ? ` ${t('(you)')}` : ''}</b><small>{u.companyName || u.email}</small></span>
+        <span className="pl-side"><span className={`status-dot ${cls}`} title={t(label)} />{u.staff ? <em>{t(`${u.roleLabel}||role`)}</em> : <em>{t('{n} prop · {m} tools', { n: u.listingScope === 'all' ? t('All') : String(u.listingCount), m: u.features.length })}</em>}</span></button></li>; })}
+        {!list.length && <li className="muted-small pad">{t('Nobody matches.')}</li>}</ul></div>
+      <div className="editor-col">{person ? <Editor key={person.id} p={person} data={data} onSaved={say} /> : <div className="empty"><p>{t('Select a person.')}</p></div>}</div></div>
     {drawer && <InviteDrawer data={data} prefill={drawer} onClose={() => setDrawer(null)} />}
     {toast && <div className="ok-toast" role="status"><Icon name="check" />{toast}</div>}
   </div>;
@@ -179,10 +179,10 @@ export function AccessManager({ data, meId }: { data: AccessData; meId: string }
 
 /* ---------- CRM & API ---------- */
 export function CreateApiKey() {
-  const router = useRouter(); const [key, setKey] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const t = useT(); const router = useRouter(); const [key, setKey] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   return <form className="key-form" onSubmit={async e => { e.preventDefault(); const name = String(new FormData(e.currentTarget).get('name') || ''); setBusy(true); setErr(''); try { const r = await call('/api/admin/integrations/keys', 'POST', { name }); setKey(r.key); router.refresh(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); } }}>
-    <div className="row tight"><input name="name" required minLength={2} placeholder="Key name, e.g. Company CRM (production)" aria-label="Key name" /><button className="btn small navy" disabled={busy}><Icon name="plus" />{busy ? 'Creating…' : 'Create API key'}</button></div>
-    {err && <p className="form-error">{err}</p>}{key && <div className="link-out"><CopyField value={key} label="Copy key" /><small>Store this key in the CRM now. For security it is shown only once.</small></div>}</form>;
+    <div className="row tight"><input name="name" required minLength={2} placeholder={t('Key name, e.g. Company CRM (production)')} aria-label={t('Key name')} /><button className="btn small navy" disabled={busy}><Icon name="plus" />{busy ? t('Creating…') : t('Create API key')}</button></div>
+    {err && <p className="form-error">{err}</p>}{key && <div className="link-out"><CopyField value={key} label="Copy key" /><small>{t('Store this key in the CRM now. For security it is shown only once.')}</small></div>}</form>;
 }
 
 /* ---------- Public: request access, accept invitation ---------- */

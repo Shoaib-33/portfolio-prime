@@ -4,6 +4,9 @@ import PUBLIC from './nl/public';
 import LISTINGS from './nl/listings';
 import ACCOUNT from './nl/account';
 import SHARED from './nl/shared';
+import STAFF_ADMIN from './nl/staff-admin';
+import STAFF_BUYERS from './nl/staff-buyers';
+import STAFF_ACCESS from './nl/staff-access';
 
 const CORE: Record<string, string> = {
   'Properties': 'Aanbod', 'Smart finder': 'Slimme zoeker', 'Membership': 'Lidmaatschap', 'Sell to us': 'Verkoop aan ons', 'Join free': 'Gratis aanmelden', 'Log in': 'Inloggen', 'Log out': 'Uitloggen', 'My account': 'Mijn account', 'Staff workspace': 'Medewerkersomgeving',
@@ -19,11 +22,11 @@ const CORE: Record<string, string> = {
   'YOUR NEXT STEP': 'UW VOLGENDE STAP', 'Make an offer': 'Doe een bod', 'Request a viewing': 'Bezichtiging aanvragen', 'Ask a question': 'Stel een vraag', 'Message your account manager': 'Bericht aan uw accountmanager', 'Messages': 'Berichten', 'Map': 'Kaart', 'Verify to make offers': 'Verifieer om te bieden', 'Submit a sealed bid': 'Doe een gesloten bod',
   'All properties': 'Alle objecten', 'Residential portfolios': 'Woningportefeuilles', 'Apartment buildings': 'Appartementencomplexen', 'Prime homes': 'Toplocatiewoningen', 'Every city': 'Elke stad', 'Search': 'Zoeken', 'Back to the offering': 'Terug naar het aanbod',
 };
-const NL: Record<string, string> = { ...CORE, ...SHARED, ...PUBLIC, ...LISTINGS, ...ACCOUNT };
-export type T = (s: string, vars?: Record<string, string | number>) => string;
+const NL: Record<string, string> = { ...STAFF_ADMIN, ...STAFF_BUYERS, ...STAFF_ACCESS, ...CORE, ...SHARED, ...PUBLIC, ...LISTINGS, ...ACCOUNT }; // investor-facing wording wins on overlap
+export type T = ((s: string, vars?: Record<string, string | number>) => string) & { lang?: string };
 /** t('Hello {name}', { name }) : Dutch when the language is nl and a translation exists, else the English text. */
-export const tr = (lang: string): T => (s, vars) => {
+export const tr = (lang: string): T => Object.assign((s: string, vars?: Record<string, string | number>) => {
   let out = (lang === 'nl' && NL[s]) || s.split('||')[0]; // 'Close||deal': text before || is the English, after it tells same-spelled words apart
   if (vars) for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(String(v));
   return out;
-};
+}, { lang });

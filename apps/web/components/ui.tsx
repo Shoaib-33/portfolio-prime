@@ -10,7 +10,7 @@ import { navFor, can } from '@/lib/access';
 export async function Header({ me, lang, page }: { me: Me; lang: string; page?: string }) {
   const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me); // staff work in the Workspace; investor tools stay reachable by URL for previews
   const ws = u?.staff ? await api('/admin/workspace') : null; // staff menu = the workspace sections the developer made visible
-  const staffTabs: [string, string][] = ws?.ok ? ws.data.tabs.filter((x: any) => x.visible).map((x: any) => [x.key, x.label]) : [['access', 'People & access']];
+  const staffTabs: [string, string][] = ws?.ok ? ws.data.tabs.filter((x: any) => x.visible).map((x: any) => [x.key, t(x.label)]) : [['access', t('People & access')]];
   const cur = (p: string) => (page === p ? { 'aria-current': 'page' as const } : {});
   const brand = <Link className="brand" href="/" aria-label={t('Maasland and Partners home')}><span className="brand-mark">M<span>∕</span>P</span><span>MAASLAND <i>&amp;</i> PARTNERS<small>PROPERTY. WITH PERSPECTIVE.</small></span></Link>;
   return <header id="site-header"><div className="demo-strip"><span><i></i> {t('DEMO · INVITE-ONLY · fictional listings and people')}</span><span className="hide-mobile">{t('Demo accounts on the')} <Link href="/login">{t('login page')}</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">{t('Private by design')}</span>}</div>
