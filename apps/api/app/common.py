@@ -217,6 +217,31 @@ def log_rule(rule: str, text_: str):
     db.ins(T.automation_log, {'rule': rule, 'text': text_}, returning=False)
 
 
+def lang_of(request: Request | None, u: dict | None = None) -> str:
+    """nl or en: the signed-in person's saved language, else the website language they picked (cookie)."""
+    loc = (u or {}).get('locale')
+    if loc in ('nl', 'en'): return loc
+    return 'nl' if request is not None and request.cookies.get('pp_lang') == 'nl' else 'en'
+
+
+def public_url() -> str:
+    return (os.environ.get('PP_PUBLIC_URL') or os.environ.get('SITE_URL') or os.environ.get('RENDER_EXTERNAL_URL') or 'http://localhost:3000').rstrip('/')
+
+
+def staff_alert(client_id: str | None, title: tuple[str, str], body: tuple[str, str], path: str, slug: str | None = None):
+    """Tells the team at once that a client acted: the staff member who invited the client, else every admin.
+    A notification in the website and an email (title and body as (English, Dutch); each recipient gets their own language)."""
+    who = []
+    if client_id:
+        c = db.get(T.users, id=client_id)
+        if c and c.get('invited_by'): who = [x for x in [db.get(T.users, id=c['invited_by'])] if x and x['status'] == 'active' and not x['deleted_at']]
+    if not who: who = [x for x in db.all_(T.users, T.users.c.role == 'admin') if x['status'] == 'active' and not x['deleted_at']]
+    for s in who:
+        nl = s.get('locale') == 'nl'
+        notify(s['id'], 'staff_alert', title[nl], body[nl], slug)
+        draft_email(s['email'], title[nl], body[nl] + ('\n\nOpenen: ' if nl else '\n\nOpen: ') + public_url() + path, 'staff_alert')
+
+
 def draft_email(to: str, subject: str, body: str, kind: str):
     if rule_on('emails'):
         db.ins(T.outbox, {'to_email': to, 'subject': subject, 'body': body, 'kind': kind}, returning=False)

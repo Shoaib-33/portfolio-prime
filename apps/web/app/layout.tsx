@@ -15,5 +15,5 @@ export const dynamic = 'force-dynamic';
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [me, lang] = await Promise.all([getMe(), getLang()]);
   const page = (await headers()).get('x-pp-page') || '';
-  return <html lang={lang}><body><LangProvider lang={lang}><a className="skip" href="#main">{lang === 'nl' ? 'Naar de inhoud' : 'Skip to content'}</a><Header me={me} lang={lang} page={page} /><main id="main">{children}</main><Footer lang={lang} me={me} /></LangProvider></body></html>;
+  return <html lang={lang}><body><LangProvider lang={lang}><a className="skip" href="#main">{lang === 'nl' ? 'Naar de inhoud' : 'Skip to content'}</a><Header me={me} lang={lang} page={page} /><main id="main">{children}</main><Footer lang={lang} me={me} page={page} /></LangProvider></body></html>;
 }

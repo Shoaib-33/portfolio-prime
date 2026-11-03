@@ -201,8 +201,8 @@ async function BuyerCompany(id: string) {
   </div>;
 }
 
-const FUNNEL: [string, string][] = [['sent', 'Sent'], ['opened', 'Opened'], ['clicked', 'Clicked'], ['registered', 'Registered']];
-const Funnel = ({ f, t }: { f: any; t: T }) => <div className="ofunnel">{FUNNEL.map(([k, l]) => <div key={k}><span>{t(l)}</span><b>{f[k]}</b><i><em style={{ width: (f.total ? f[k] / f.total * 100 : 0) + '%' }} /></i></div>)}</div>;
+const FUNNEL: [string, string][] = [['sent', 'Sent'], ['opened', 'Opened'], ['clicked', 'Clicked'], ['registered', 'Registered'], ['enquired', 'Viewing / question'], ['offered', 'Offer']];
+const Funnel = ({ f, t }: { f: any; t: T }) => <div className="ofunnel">{FUNNEL.filter(([k]) => f[k] !== undefined).map(([k, l]) => <div key={k}><span>{t(l)}</span><b>{f[k]}</b><i><em style={{ width: (f.total ? f[k] / f.total * 100 : 0) + '%' }} /></i></div>)}</div>;
 
 async function Outreach(sp: Record<string, string | undefined>) {
   if (sp.campaign) return Campaign(sp.campaign);

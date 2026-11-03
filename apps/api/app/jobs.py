@@ -38,8 +38,8 @@ def tick() -> int:
             db.upd(T.jobs, T.jobs.c.id == j['id'], {'status': 'done', 'attempts': j['attempts'] + 1}); ran += 1
         except Exception as e:
             db.upd(T.jobs, T.jobs.c.id == j['id'], {'status': 'failed' if j['attempts'] >= 2 else 'queued', 'attempts': j['attempts'] + 1, 'last_error': str(e)[:500]})
-    from .services.buyers import send_queued  # outreach emails go out gradually, a batch per tick
-    ran += send_queued()['sent']
+    from .services.buyers import send_queued, send_outbox  # outreach emails go out gradually, a batch per tick
+    ran += send_queued()['sent'] + send_outbox()
     return ran
 
 

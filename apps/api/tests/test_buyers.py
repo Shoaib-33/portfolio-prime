@@ -89,13 +89,21 @@ def test_buyers_import_match_and_outreach(client):
     assert anon.get(f'/m/{tok}/o.gif').headers['content-type'] == 'image/gif'
     go = anon.get(f'/m/{tok}', follow_redirects=False); assert go.status_code == 302 and go.headers['location'].startswith('/invite/'), 'the email link opens a personal invitation'
     info = anon.get(f"/invites/{go.headers['location'].split('/')[-1]}").json(); assert info['email'] == 'mila@maaswonen.example' and info['listings'] == 2 and info['companyName'] == 'Maas Wonen'
+    assert 'pp_lang=nl' in go.headers.get('set-cookie', ''), 'the website opens in the language of the email'
+    assert sorted(x['slug'] for x in info['properties']) == ['rotterdam-zuid', 'utrecht-oost'] and info['message'] is None, 'the invitation shows the properties before the password'
+    assert all('askingPrice' not in x for x in info['properties']), 'only the teaser, never the full figures, before the account exists'
     anon.post(f"/invites/{go.headers['location'].split('/')[-1]}/accept", json={'password': 'a-long-password', 'acceptTerms': True})
     assert sorted(l['slug'] for l in anon.get('/listings').json()) == ['rotterdam-zuid', 'utrecht-oost'], 'sees exactly the properties the admin chose'
     assert sorted(anon.get('/me').json()['user']['features']) == ['map', 'messages'], 'and exactly the features the admin chose'
     assert a.get(f"/admin/outreach/{camp.json()['id']}").json()['grant']['features'] == ['map', 'messages']
 
+    before = len(a.get('/admin/outbox').json())
+    assert anon.post('/listings/rotterdam-zuid/enquiries', json={'kind': 'viewing', 'name': 'Mila Jansen', 'email': 'mila@maaswonen.example', 'preferredDate': '2030-01-15', 'format': 'In person'}).status_code == 201
+    box = a.get('/admin/outbox').json()[: len(a.get('/admin/outbox').json()) - before]
+    assert any(m['kind'] == 'staff_alert' and 'Mila Jansen' in m['subject'] for m in box), 'the team gets an alert right away'
+    assert any(m['kind'] == 'viewing' and m['subject'] == 'Uw bezichtigingsverzoek' for m in box), 'the client gets the confirmation in Dutch, like the email'
     cid = camp.json()['id']; c = a.get(f'/admin/outreach/{cid}').json()
-    assert c['funnel']['sent'] == 2 and c['funnel']['opened'] == 1 and c['funnel']['clicked'] == 1 and c['funnel']['registered'] == 1
+    assert c['funnel']['sent'] == 2 and c['funnel']['opened'] == 1 and c['funnel']['clicked'] == 1 and c['funnel']['registered'] == 1 and c['funnel']['enquired'] == 1 and c['funnel']['offered'] == 0
     assert a.get(f"/admin/buyers/{maas['id']}").json()['stage'] == 'interested'
 
     rt = link(ruben); assert anon.get(f'/m/{rt}/info').json()['unsubscribed'] is False

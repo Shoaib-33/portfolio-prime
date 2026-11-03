@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from .. import db
 from ..db import T, and_, desc, func, select
-from ..common import (ApiError, audit, bad, conflict, forbidden, create_session, draft_email, hash_password, json_body, log_rule, not_found, notify, now, parse, parse_value,
+from ..common import (ApiError, audit, bad, conflict, forbidden, create_session, draft_email, get_config, hash_password, json_body, log_rule, not_found, notify, now, parse, parse_value, serialize_listing, staff_alert,
                       require_staff, set_session_cookie, sha, client_ip)
 from ..domain import FEATURE_KEYS, FEATURE_PRESETS, FEATURES, SUPER_ROLES, TIER_LABEL, features_of, is_staff, tier_of
 from .account import public_user
@@ -226,7 +226,16 @@ def invite_info(request: Request, token: str):
     n = db.count(T.listing_access, T.listing_access.c.user_id == u['id'])
     by = db.get(T.users, id=i['created_by']) if i['created_by'] else None
     fs = features_of(db.camel(u))
-    return {'name': u['name'], 'email': u['email'], 'companyName': u['company_name'], 'role': u['role'], 'roleLabel': ROLE_LABEL.get(u['role']), 'staff': staff, 'listings': 'all' if staff or u['listing_scope'] == 'all' else n,
+    # The properties this person was invited for, as a teaser (what any visitor may see): they know what they get before choosing a password.
+    props = []
+    if not staff and u['listing_scope'] != 'all':
+        from ..services.listings import get_listing
+        L = T.listings.c; cfg = get_config()
+        for r in db.rows(select(L.slug).select_from(T.listing_access.join(T.listings, T.listing_access.c.listing_id == L.id))
+                         .where(T.listing_access.c.user_id == u['id'], L.status.notin_(['draft', 'withdrawn'])).limit(6)):
+            x = get_listing(r['slug'])
+            if x: props.append(serialize_listing(x['l'], x['p'], None, cfg))
+    return {'properties': props, 'name': u['name'], 'email': u['email'], 'companyName': u['company_name'], 'role': u['role'], 'roleLabel': ROLE_LABEL.get(u['role']), 'staff': staff, 'listings': 'all' if staff or u['listing_scope'] == 'all' else n,
             'features': [{'key': f['key'], 'label': f['label'], 'desc': f['desc']} for f in FEATURES if f['key'] in fs], 'invitedBy': by['name'] if by else 'Maasland & Partners', 'message': i['message'],
             'expiresAt': i['expires_at'], 'accountManager': u['account_manager']}
 
@@ -234,13 +243,14 @@ def invite_info(request: Request, token: str):
 class AcceptIn(BaseModel):
     password: Annotated[str, StringConstraints(min_length=10, max_length=200)]
     acceptTerms: Literal[True]
-    locale: Literal['nl', 'en'] = 'en'
+    locale: Optional[Literal['nl', 'en']] = None
 
 
 @post('/invites/{token}/accept')
 def accept(request: Request, response: Response, token: str, body=Depends(json_body)):
     rate_limit('invite:' + client_ip(request), 60)
     i, u = _open_invite(token); b = parse(AcceptIn, body)
+    b.locale = b.locale or (request.cookies.get('pp_lang') if request.cookies.get('pp_lang') in ('nl', 'en') else None) or u['locale'] or 'en'  # keeps the language of the email they came from
     db.upd(T.users, T.users.c.id == u['id'], {'password_hash': hash_password(b.password), 'status': 'active', 'locale': b.locale, 'last_login_at': now()})
     db.upd(T.invites, T.invites.c.id == i['id'], {'used_at': now()})
     set_session_cookie(response, create_session(u['id'], not u['twofa_enabled']), b.locale)
@@ -250,7 +260,10 @@ def accept(request: Request, response: Response, token: str, body=Depends(json_b
     db.upd(T.outreach_messages, and_(M.user_id == u['id'], M.accepted_at.is_(None), M.clicked_at.isnot(None)), {'accepted_at': now(), 'status': 'registered'})
     if not is_staff(cu): notify(u['id'], 'welcome', 'Welcome to Maasland & Partners', 'Your private selection is ready. Your account manager is one message away.')
     co = f" ({u['company_name']})" if u['company_name'] else ''
-    if i['created_by']: notify(i['created_by'], 'access', 'Invitation accepted', f"{u['name']}{co} activated their account.")
+    if i['created_by'] and not is_staff(cu):
+        staff_alert(u['id'], (f"Activated: {u['name']}{co}", f"Geactiveerd: {u['name']}{co}"),
+                    (f"{u['name']}{co} opened the invitation and activated their account. A good moment to call.", f"{u['name']}{co} heeft de uitnodiging geopend en het account geactiveerd. Een goed moment om te bellen."), f"/admin?tab=access")
+    elif i['created_by']: notify(i['created_by'], 'access', 'Invitation accepted', f"{u['name']}{co} activated their account.")
     return {'user': public_user(cu)}
 
 

@@ -427,6 +427,9 @@ FOOTER = {'nl': 'U ontvangt deze e-mail omdat {company} actief is op de Nederlan
 
 def personalise(text_: str, values: dict) -> str:
     """Fills {placeholders}; {link} and {unsubscribe} stay for the send step (they carry the personal token)."""
+    prop, city = str(values.get('property') or ''), str(values.get('city') or '')
+    if prop and city and city.lower() in prop.lower():  # "A foothold in Rotterdam in Rotterdam" -> "A foothold in Rotterdam"
+        text_ = re.sub(r'\{property\} (?:in|en) \{city\}', '{property}', text_)
     return re.sub(r'\{(\w+)\}', lambda m: str(values.get(m.group(1), m.group(0))) if m.group(1) not in ('link', 'unsubscribe') else m.group(0), text_)
 
 
@@ -485,6 +488,24 @@ def _smtp_send(to: str, subject: str, text_: str, html: str, reply_to: str | Non
         if port != 465: s.starttls()
         if os.environ.get('SMTP_USER'): s.login(os.environ['SMTP_USER'], os.environ.get('SMTP_PASSWORD', ''))
         s.send_message(msg)
+
+
+def send_outbox() -> int:
+    """Confirmations to clients and alerts to the team: with SMTP set up they really go out (only fresh ones, never an old backlog)."""
+    if mail_mode()['mode'] != 'smtp': return 0
+    O = T.outbox; sent = 0
+    for m in db.all_(O, and_(O.c.status == 'draft', O.c.kind != 'outreach', O.c.created_at > now() - timedelta(hours=2)), order=O.c.created_at, limit=50):
+        try:
+            _smtp_send(m['to_email'], m['subject'], m['body'], '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.55;color:#1d232b">' + escape(m['body']).replace(chr(10), '<br>') + '</div>', None, public_url_unsub())
+            db.upd(O, O.c.id == m['id'], {'status': 'sent'}); sent += 1
+        except Exception:
+            db.upd(O, O.c.id == m['id'], {'status': 'failed'})
+    return sent
+
+
+def public_url_unsub() -> str:
+    from ..common import public_url
+    return public_url() + '/account'
 
 
 def send_queued(limit: int | None = None) -> dict:

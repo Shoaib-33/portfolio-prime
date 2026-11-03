@@ -349,5 +349,9 @@ const NL: Record<string, string> = {
   'Unsubscribe?': 'Afmelden?',
   'Stop emails about new investment opportunities to {email}.': 'Stop e-mails over nieuwe beleggingskansen aan {email}.',
   'Unsubscribe': 'Afmelden',
+  'THE PROPERTY WE DISCUSSED': 'HET OBJECT WAAROVER WE SPRAKEN', 'THE PROPERTIES SELECTED FOR YOU': 'DE OBJECTEN DIE VOOR U ZIJN GESELECTEERD',
+  'Address, figures, photos and documents open as soon as your account is active.': 'Adres, cijfers, foto’s en documenten zijn zichtbaar zodra uw account actief is.',
+  'ONE STEP · 30 SECONDS': 'ÉÉN STAP · 30 SECONDEN', 'Then you see the full details straight away.': 'Daarna ziet u direct alle details.',
+  'Gross yield': 'Bruto rendement',
 };
 export default NL;

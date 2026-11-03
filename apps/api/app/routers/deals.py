@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from .. import db
 from ..db import T, and_, asc
-from ..common import (audit, bad, client_ip, draft_email, eur_nl, forbidden, form_body, iso, json_body, log_rule, not_found, notify, now, parse, read_stored,
+from ..common import (audit, bad, client_ip, draft_email, eur_nl, forbidden, form_body, iso, json_body, lang_of, log_rule, not_found, notify, now, parse, read_stored, staff_alert,
                       read_token, require_feature, require_user, rule_on, save_file, sign_token, viewer_of)
 from ..domain import can_see_listing, has_feature, is_staff, lead_score, off_market_state
 from ..pdf import watermark
@@ -119,7 +119,11 @@ def offer(request: Request, slug: str, form=Depends(form_body)):
     notify(u['id'], 'offer', 'Offer submitted', f"{l['name']} · €{eur_nl(amount)}. Offers are not binding until a purchase agreement is signed.", l['slug'])
     if lead: log_rule('scoring', f"Offer from {u['name']} on {l['name']} scored {lead['value']} ({lead['band']})")
     if followup: log_rule('followups', f"Follow-up {'within 4 hours' if lead and lead['band'] == 'Hot' else 'tomorrow'} · {l['name']}")
-    draft_email(u['email'], 'We have received your offer', f"Dear {u['name']}, thank you for your offer of €{eur_nl(amount)} on {l['name']}. We reply within 24 hours.", 'offer')
+    if lang_of(request, u) == 'nl': draft_email(u['email'], 'Wij hebben uw bod ontvangen', f"Beste {u['name']}, dank u voor uw bod van €{eur_nl(amount)} op {l['name_nl'] or l['name']}. Wij reageren binnen 24 uur.", 'offer')
+    else: draft_email(u['email'], 'We have received your offer', f"Dear {u['name']}, thank you for your offer of €{eur_nl(amount)} on {l['name']}. We reply within 24 hours.", 'offer')
+    who = u['name'] + (f" ({u['companyName']})" if u.get('companyName') else '')
+    staff_alert(u['id'], (f"Offer: €{eur_nl(amount)} on {l['name']}", f"Bod: €{eur_nl(amount)} op {l['name_nl'] or l['name']}"),
+                (f"{who} made an offer of €{eur_nl(amount)} ({ft}, transfer {td}).", f"{who} heeft een bod gedaan van €{eur_nl(amount)} ({ft}, levering {td})."), '/admin?tab=offers', l['slug'])
     return {'id': o['id'], 'status': o['status'], 'lead': lead}
 
 
@@ -144,8 +148,16 @@ def enquiry(request: Request, slug: str, body=Depends(json_body)):
     e = db.ins(T.enquiries, {'listing_id': x['l']['id'] if x else None, 'user_id': u['id'] if u else None, 'kind': b.kind, 'name': b.name, 'email': b.email, 'preferred_date': b.preferredDate, 'format': b.format, 'message': b.message,
                              'lead_score': lead and lead['value'], 'lead_band': lead and lead['band'], 'followup_at': followup})
     audit(request, 'enquiry', 'enquiry', e['id'], {'kind': b.kind})
-    if u: notify(u['id'], 'enquiry', 'Viewing request received' if b.kind == 'viewing' else 'Question received', f"{x['l']['name'] if x else 'General'} · we reply within 24 hours.", x['l']['slug'] if x else None)
-    draft_email(b.email, 'Your viewing request' if b.kind == 'viewing' else 'Thank you for your question', f"Dear {b.name}, thank you. {'We confirm a slot within one working day; tenants receive proper notice where a property is let.' if b.kind == 'viewing' else 'Your account manager replies within 24 hours.'}", b.kind)
+    nl = lang_of(request, u) == 'nl'; what = (x['l']['name_nl'] if nl and x['l']['name_nl'] else x['l']['name']) if x else ('Algemeen' if nl else 'General')
+    if u: notify(u['id'], 'enquiry', ('Bezichtigingsverzoek ontvangen' if nl else 'Viewing request received') if b.kind == 'viewing' else ('Vraag ontvangen' if nl else 'Question received'),
+                 f"{what} · {'wij reageren binnen 24 uur.' if nl else 'we reply within 24 hours.'}", x['l']['slug'] if x else None)
+    if nl: draft_email(b.email, 'Uw bezichtigingsverzoek' if b.kind == 'viewing' else 'Bedankt voor uw vraag', f"Beste {b.name}, dank u wel. {'Wij bevestigen binnen één werkdag een moment; huurders worden tijdig ingelicht als het object verhuurd is.' if b.kind == 'viewing' else 'Uw accountmanager antwoordt binnen 24 uur.'}", b.kind)
+    else: draft_email(b.email, 'Your viewing request' if b.kind == 'viewing' else 'Thank you for your question', f"Dear {b.name}, thank you. {'We confirm a slot within one working day; tenants receive proper notice where a property is let.' if b.kind == 'viewing' else 'Your account manager replies within 24 hours.'}", b.kind)
+    when = f" · {b.preferredDate}{' · ' + b.format if b.format else ''}" if b.kind == 'viewing' else ''
+    staff_alert(u['id'] if u else None, (f"{'Viewing request' if b.kind == 'viewing' else 'Question'}: {b.name}", f"{'Bezichtigingsverzoek' if b.kind == 'viewing' else 'Vraag'}: {b.name}"),
+                (f"{b.name} ({b.email}) {'asks for a viewing of' if b.kind == 'viewing' else 'has a question about'} {x['l']['name'] if x else 'a general topic'}{when}.{(chr(10) + chr(10) + b.message) if b.message else ''}",
+                 f"{b.name} ({b.email}) {'vraagt een bezichtiging aan voor' if b.kind == 'viewing' else 'heeft een vraag over'} {(x['l']['name_nl'] or x['l']['name']) if x else 'een algemeen onderwerp'}{when}.{(chr(10) + chr(10) + b.message) if b.message else ''}"),
+                '/admin?tab=offers', x['l']['slug'] if x else None)
     return {'id': e['id'], 'reference': 'PP-' + e['id'][:6].upper()}
 
 
@@ -181,4 +193,7 @@ def bid(request: Request, id: str, form=Depends(form_body)):
     else: db.ins(T.offers, {**vals, 'listing_id': r['listing_id'], 'user_id': u['id'], 'bid_round_id': id, 'bidder_label': u['companyName'] or u['name'], 'status': 'sealed', 'lead_score': 75, 'lead_band': 'Hot'}, returning=False)
     audit(request, 'bid_submit', 'bid_round', id, {'amount': amount, 'updated': bool(mine)})
     notify(u['id'], 'bid', 'Sealed bid received', f"€{eur_nl(amount)}. Bids stay sealed until {r['closes_at'].strftime('%Y-%m-%d %H:%M')} UTC.")
+    who = u['name'] + (f" ({u['companyName']})" if u.get('companyName') else '')
+    staff_alert(u['id'], (f"Sealed bid {'changed' if mine else 'received'}: {who}", f"Gesloten bod {'gewijzigd' if mine else 'ontvangen'}: {who}"),
+                (f"{who} {'changed their' if mine else 'placed a'} sealed bid in a bid round. The amount stays sealed until the round closes.", f"{who} heeft een gesloten bod {'gewijzigd' if mine else 'uitgebracht'} in een inschrijving. Het bedrag blijft verzegeld tot de sluiting."), '/admin?tab=bids')
     return {'ok': True, 'updated': bool(mine)}

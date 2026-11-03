@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, ReactNode, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { imgSrc, moneyShort, DEAL, dateTime, date } from '@/lib/format';
-import { useT } from '@/components/lang';
+import { useT, useLang } from '@/components/lang';
 
 export type Listing = { id: string; slug: string; name: string; city: string; district?: string; image: string; dealType: string; status: string; askingPrice: number; units: number; propertyType: string; source: string; sharedWith: number };
 export type FeatureDef = { key: string; label: string; desc: string; group: string };
@@ -201,10 +201,10 @@ export function RequestAccessForm({ defaultInterest = 'invest' }: { defaultInter
 }
 
 export function AcceptInvite({ token, staff, email }: { token: string; staff: boolean; email: string }) {
-  const t = useT(); const router = useRouter(); const [pw, setPw] = useState(''); const [pw2, setPw2] = useState(''); const [show, setShow] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const t = useT(); const lang = useLang(); const router = useRouter(); const [pw, setPw] = useState(''); const [pw2, setPw2] = useState(''); const [show, setShow] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const strength = Math.min(4, (pw.length >= 10 ? 1 : 0) + (/[A-Z]/.test(pw) && /[a-z]/.test(pw) ? 1 : 0) + (/\d/.test(pw) ? 1 : 0) + (/[^\w]/.test(pw) || pw.length >= 16 ? 1 : 0));
   return <form className="accept-form" onSubmit={async e => { e.preventDefault(); if (!e.currentTarget.reportValidity()) return; if (pw !== pw2) return setErr(t('The two passwords are not the same.')); setBusy(true); setErr('');
-    try { await call(`/api/invites/${encodeURIComponent(token)}/accept`, 'POST', { password: pw, acceptTerms: true }); router.push(staff ? '/admin' : '/'); router.refresh(); } catch (x: any) { setErr(x.message); setBusy(false); } }}>
+    try { await call(`/api/invites/${encodeURIComponent(token)}/accept`, 'POST', { password: pw, acceptTerms: true, locale: lang }); router.push(staff ? '/admin' : '/'); router.refresh(); } catch (x: any) { setErr(x.message); setBusy(false); } }}>
     <label>{t('Email')}<input value={email} readOnly autoComplete="username" /></label>
     <label>{t('Choose a password')}<span className="pw"><input type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} minLength={10} required autoComplete="new-password" /><button type="button" className="link-button" onClick={() => setShow(!show)}>{show ? t('Hide') : t('Show')}</button></span></label>
     <div className={`strength s${strength}`} aria-hidden="true"><i /><i /><i /><i /></div><small className="muted-small">{t('At least 10 characters. A passphrase works well.')}</small>

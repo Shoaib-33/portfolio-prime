@@ -342,13 +342,15 @@ def campaign(request: Request, id: str):
     users = [r['user_id'] for r in rows if r['user_id']]
     A = T.audit_events.c
     views = {r['actor_id']: r['n'] for r in db.rows(select(A.actor_id, func.count().label('n')).where(A.actor_id.in_(users), A.action == 'view', A.object_id == c['listing_id']).group_by(A.actor_id))} if users else {}
-    offers = {r['user_id']: r['n'] for r in db.rows(select(T.offers.c.user_id, func.count().label('n')).where(T.offers.c.user_id.in_(users), T.offers.c.listing_id == c['listing_id']).group_by(T.offers.c.user_id))} if users else {}
+    _, gids, _ = _grant(c); gids = gids or [c['listing_id']]
+    enq = {r['user_id']: r['n'] for r in db.rows(select(T.enquiries.c.user_id, func.count().label('n')).where(T.enquiries.c.user_id.in_(users), T.enquiries.c.listing_id.in_(gids)).group_by(T.enquiries.c.user_id))} if users else {}
+    offers = {r['user_id']: r['n'] for r in db.rows(select(T.offers.c.user_id, func.count().label('n')).where(T.offers.c.user_id.in_(users), T.offers.c.listing_id.in_(gids)).group_by(T.offers.c.user_id))} if users else {}
     l = db.get(T.listings, id=c['listing_id']); scope, ids, feats = _grant(c)
     names = {r['id']: r['name'] for r in db.rows(select(T.listings.c.id, T.listings.c.name).where(T.listings.c.id.in_(ids)))} if ids else {}
     return {'grant': {'scope': scope, 'listings': [names.get(x, '—') for x in ids], 'features': feats, 'featureLabels': [f['label'] for f in FEATURES if f['key'] in feats]}, 'id': c['id'], 'name': c['name'], 'listing': l['name'] if l else '—', 'slug': l['slug'] if l else None, 'language': c['language'], 'subject': rows[0]['subject'] if rows else c['subject'], 'body': c['body'], 'sender': c['sender_name'], 'createdAt': c['created_at'],
-            'funnel': _funnel(rows), 'messages': [{'id': r['id'], 'company': r['company'], 'companyId': r['company_id'], 'contact': r['contact'], 'email': r['to_email'], 'status': r['status'], 'score': r['score'], 'error': r['error'],
+            'funnel': {**_funnel(rows), 'enquired': sum(1 for x in users if enq.get(x)), 'offered': sum(1 for x in users if offers.get(x))}, 'messages': [{'id': r['id'], 'company': r['company'], 'companyId': r['company_id'], 'contact': r['contact'], 'email': r['to_email'], 'status': r['status'], 'score': r['score'], 'error': r['error'],
                                                    'sentAt': r['sent_at'], 'openedAt': r['opened_at'], 'clickedAt': r['clicked_at'], 'registeredAt': r['accepted_at'], 'unsubscribedAt': r['unsubscribed_at'],
-                                                   'views': views.get(r['user_id'], 0), 'offers': offers.get(r['user_id'], 0)} for r in rows], 'mail': B.mail_mode()}
+                                                   'views': views.get(r['user_id'], 0), 'enquiries': enq.get(r['user_id'], 0), 'offers': offers.get(r['user_id'], 0)} for r in rows], 'mail': B.mail_mode()}
 
 
 @post('/admin/outreach/send-now')
@@ -411,9 +413,11 @@ def clicked(request: Request, token: str):
         if (new or vals) and u['status'] == 'active': notify(u['id'], 'access', 'New property shared with you', f"{l['name']} is now in your selection.", l['slug'])
     db.upd(T.outreach_messages, T.outreach_messages.c.id == m['id'], {'user_id': u['id']}); db.upd(T.buyer_contacts, T.buyer_contacts.c.id == contact['id'], {'user_id': u['id']})
     if u['status'] == 'invited':
-        inv = new_invite(u['id'], camp['created_by'], 30, f"Re: {l['name']}")
-        return RedirectResponse(inv['path'], 302)
-    return RedirectResponse(f"/login?next=/listings/{l['slug']}", 302)
+        inv = new_invite(u['id'], camp['created_by'], 30, None)
+        r = RedirectResponse(inv['path'], 302)
+    else: r = RedirectResponse(f"/login?next=/listings/{l['slug']}", 302)
+    r.set_cookie('pp_lang', camp['language'], max_age=365 * 86400, path='/', samesite='lax', secure=os.environ.get('RENDER') == 'true')  # the website speaks the email's language
+    return r
 
 
 @router.get('/m/{token}/info')

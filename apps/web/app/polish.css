@@ -73,3 +73,17 @@ td small,.document-row small{font-size:11px}
 :root{--ok:#28694a}
 .eyebrow{color:#4f6357}
 .code,pre.code,.people-list{outline-offset:2px}
+
+/* Invitation: the property they were contacted about, before the password */
+.inv-props{display:grid;gap:14px;margin:6px 0 26px}
+.inv-prop{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;background:rgba(250,249,246,.1);border:1px solid rgba(250,249,246,.22);border-radius:14px;padding:12px;backdrop-filter:blur(6px)}
+.inv-prop img{width:100%;height:100%;min-height:120px;object-fit:cover;border-radius:9px}
+.inv-prop h3{color:#fff;font-size:21px;margin:2px 0 10px}
+.inv-prop .eyebrow{margin-bottom:4px}
+.inv-prop dl{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0 0 8px}
+.inv-prop dt{font-size:11px;color:#c9d2cb}.inv-prop dd{margin:0;color:#fff;font-weight:600;font-size:15px}
+.inv-prop small{display:block;font-size:12px;color:#d4dbd5;line-height:1.5}
+.inv-chips{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px}
+.inv-chips li{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#f1f3ee;border:1px solid rgba(250,249,246,.28);border-radius:99px;padding:6px 12px}
+.inv-chips svg{width:14px;height:14px}
+@media (max-width:600px){.inv-prop{grid-template-columns:1fr}.inv-prop img{height:150px}}

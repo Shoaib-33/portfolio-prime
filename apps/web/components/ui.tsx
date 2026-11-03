@@ -7,13 +7,17 @@ import { ActionButton, LangToggle, SaveButton, Ring, Countdown, StaffNav, MenuTo
 import { api, getLang } from '@/lib/api';
 import { navFor, can } from '@/lib/access';
 
+/** The demo notices ("fictional listings", demo accounts) are for testers only: real clients never see them.
+    Hidden for anyone signed in with a non-demo account, on invitation and unsubscribe pages, and everywhere when PP_DEMO=0. */
+const showDemo = (me: Me, page?: string) => process.env.PP_DEMO !== '0' && !['invite', 'u'].includes(page || '') && (!me.user || me.user.email.endsWith('@demo.nl'));
+
 export async function Header({ me, lang, page }: { me: Me; lang: string; page?: string }) {
   const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me); // staff work in the Workspace; investor tools stay reachable by URL for previews
   const ws = u?.staff ? await api('/admin/workspace') : null; // staff menu = the workspace sections the developer made visible
   const staffTabs: [string, string][] = ws?.ok ? ws.data.tabs.filter((x: any) => x.visible).map((x: any) => [x.key, t(x.label)]) : [['access', t('People & access')]];
   const cur = (p: string) => (page === p ? { 'aria-current': 'page' as const } : {});
   const brand = <Link className="brand" href="/" aria-label={t('Maasland and Partners home')}><span className="brand-mark">M<span>∕</span>P</span><span>MAASLAND <i>&amp;</i> PARTNERS<small>PROPERTY. WITH PERSPECTIVE.</small></span></Link>;
-  return <header id="site-header"><div className="demo-strip"><span><i></i> {t('DEMO · INVITE-ONLY · fictional listings and people')}</span><span className="hide-mobile">{t('Demo accounts on the')} <Link href="/login">{t('login page')}</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">{t('Private by design')}</span>}</div>
+  return <header id="site-header">{showDemo(me, page) && <div className="demo-strip"><span><i></i> {t('DEMO · INVITE-ONLY · fictional listings and people')}</span><span className="hide-mobile">{t('Demo accounts on the')} <Link href="/login">{t('login page')}</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">{t('Private by design')}</span>}</div>}
     <div className="header">{brand}<Suspense fallback={null}><MenuToggle /></Suspense>
       {u ? <nav id="navigation" aria-label={t('Main navigation')}>{u.staff ? <Suspense fallback={null}><StaffNav tabs={staffTabs} /></Suspense> : <Link href="/listings" {...cur('listings')}>{t('My selection')}{u.listings !== null ? <span className="nav-count">{u.listings}</span> : null}</Link>}
         {nav.map(f => <Link key={f.key} href={f.href} {...cur(f.href.slice(1))}>{t(f.label)}</Link>)}<LangToggle lang={lang} signedIn />
@@ -21,13 +25,13 @@ export async function Header({ me, lang, page }: { me: Me; lang: string; page?: 
         <Link className="account-btn" href={u.staff ? '/admin' : '/account'}><span className="avatar">{u.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><span>{u.staff ? u.name.split(/\s+/)[0] : t('My account')}{me.unread ? <i className="dot">{me.unread}</i> : null}</span></Link><ActionButton url="/api/auth/logout" label={t('Log out')} className="link-button" redirect="/" /></nav>
       : <nav id="navigation" aria-label={t('Main navigation')}><Link href="/#approach">{t('What we do')}</Link><Link href="/#access">{t('How access works')}</Link><Link href="/#record">{t('Track record')}</Link><LangToggle lang={lang} signedIn={false} /><Link href="/login" {...cur('login')}>{t('Log in')}</Link><Link className="btn small navy" href="/#request">{t('Request access')} <span>↗</span></Link></nav>}</div></header>;
 }
-export function Footer({ lang, me }: { lang: string; me: Me }) {
+export function Footer({ lang, me, page }: { lang: string; me: Me; page?: string }) {
   const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me);
   return <footer><div className="footer-top"><div><p className="eyebrow light">MAASLAND &amp; PARTNERS</p><h2>{t('Good property.')}<br />{t('A private conversation.')}</h2>{u ? (can(me, 'sell') ? <Link className="btn cream" href="/sell">{t('Sell your property to us')} ↗</Link> : null) : <Link className="btn cream" href="/#request">{t('Request access')} ↗</Link>}</div>
     <div className="footer-links">{u ? <><Link href="/listings">{u.staff ? t('Properties') : t('My selection')}</Link>{nav.map(f => <Link key={f.key} href={f.href}>{t(f.label)}</Link>)}<Link href="/account">{t('My account')}</Link>{u.staff && <Link href="/admin">{t('Staff workspace')}</Link>}</>
       : <><Link href="/#approach">{t('What we do')}</Link><Link href="/#access">{t('How access works')}</Link><Link href="/#record">{t('Track record')}</Link><Link href="/#request">{t('Request access')}</Link><Link href="/invest-in-dutch-real-estate">{t('Invest in Dutch real estate')}</Link><Link href="/de/immobilien-investment-niederlande">Immobilien-Investment Niederlande</Link><Link href="/login">{t('Log in')}</Link></>}</div></div>
     <div className="footer-bottom"><span>© 2026 Maasland &amp; Partners</span><span>{t('Private offering · by invitation · figures indicative, not advice')}</span><span>Next.js · FastAPI · PostgreSQL</span></div>
-    <p className="disclosure">{t('Demo build. All listings, investors and figures are fictional; photographs are reference imagery. KYC, payments, e-signing and emails are simulated adapters. Listings arrive from the company CRM through the integration API.')}</p></footer>;
+    {showDemo(me, page) && <p className="disclosure">{t('Demo build. All listings, investors and figures are fictional; photographs are reference imagery. KYC, payments, e-signing and emails are simulated adapters. Listings arrive from the company CRM through the integration API.')}</p>}</footer>;
 }
 const isNew = (d?: string) => !!d && Date.now() - new Date(d).getTime() < 7 * 864e5;
 export function ListingCard({ l, lang, signedIn, me }: { l: any; lang: string; signedIn: boolean; me?: Me }) {

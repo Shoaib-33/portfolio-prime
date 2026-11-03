@@ -178,5 +178,6 @@ const NL: Record<string, string> = {
   'Switch off what the team does not use yet. Nothing is deleted: switch a section back on and everything in it is still there. You always see every section; hidden ones are dimmed in the tab bar.': 'Schakel uit wat het team nog niet gebruikt. Er wordt niets verwijderd: schakel een onderdeel weer in en alles staat er nog. U ziet zelf altijd elk onderdeel; verborgen onderdelen zijn gedimd in de tabbalk.',
   'General||listing': 'Algemeen',
   'hidden': 'verborgen',
+  'Viewing / question': 'Bezichtiging / vraag', 'Offer': 'Bod',
 };
 export default NL;
