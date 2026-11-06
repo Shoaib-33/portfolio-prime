@@ -13,4 +13,6 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
 }
 export type Me = { user: null | { id: string; name: string; email: string; role: string; locale: string; investorType: string; country: string; companyName: string | null; verified: boolean; pro: boolean; twofaEnabled: boolean; twofaPassed: boolean; tier: 'free' | 'verified' | 'pro'; tierLabel: string; alertFrequency: string; staff: boolean; features: string[]; listingScope: 'all' | 'selected'; listings: number | null; accountManager: string | null }; kyc?: { status: string; risk?: string }; unread?: number };
 export async function getMe(): Promise<Me> { const r = await api<Me>('/me'); return r.ok ? r.data : { user: null }; }
+/** Light (default) or dark, from the site-wide switch. */
+export async function getTheme(): Promise<'light' | 'dark'> { const jar = await cookies(); return jar.get('pp_theme')?.value === 'dark' ? 'dark' : 'light'; }
 export async function getLang(): Promise<'nl' | 'en'> { const jar = await cookies(); return jar.get('pp_lang')?.value === 'nl' ? 'nl' : 'en'; }

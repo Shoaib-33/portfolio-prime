@@ -3,7 +3,7 @@ import { Me } from '@/lib/api';
 import { money, pct, STATUS, DEAL, imgSrc } from '@/lib/format';
 import { tr } from '@/lib/i18n';
 import { Suspense } from 'react';
-import { ActionButton, LangToggle, SaveButton, Ring, Countdown, StaffNav, MenuToggle } from './client';
+import { ActionButton, LangToggle, ThemeToggle, SaveButton, Ring, Countdown, StaffNav, MenuToggle } from './client';
 import { api, getLang } from '@/lib/api';
 import { navFor, can } from '@/lib/access';
 
@@ -20,14 +20,14 @@ export async function Header({ me, lang, page }: { me: Me; lang: string; page?: 
   return <header id="site-header">{showDemo(me, page) && <div className="demo-strip"><span><i></i> {t('DEMO · INVITE-ONLY · fictional listings and people')}</span><span className="hide-mobile">{t('Demo accounts on the')} <Link href="/login">{t('login page')}</Link></span>{u?.staff ? <Link href="/admin">{t('Staff workspace')} ↗</Link> : <span className="hide-mobile">{t('Private by design')}</span>}</div>}
     <div className="header">{brand}<Suspense fallback={null}><MenuToggle /></Suspense>
       {u ? <nav id="navigation" aria-label={t('Main navigation')}>{u.staff ? <Suspense fallback={null}><StaffNav tabs={staffTabs} /></Suspense> : <Link href="/listings" {...cur('listings')}>{t('My selection')}{u.listings !== null ? <span className="nav-count">{u.listings}</span> : null}</Link>}
-        {nav.map(f => <Link key={f.key} href={f.href} {...cur(f.href.slice(1))}>{t(f.label)}</Link>)}<LangToggle lang={lang} signedIn />
+        {nav.map(f => <Link key={f.key} href={f.href} {...cur(f.href.slice(1))}>{t(f.label)}</Link>)}<LangToggle lang={lang} signedIn /><ThemeToggle />
         {can(me, 'messages') && !u.staff && <Link className="icon-link" href="/account/messages" aria-label={t('Messages')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg></Link>}
         <Link className="account-btn" href={u.staff ? '/admin' : '/account'}><span className="avatar">{u.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><span>{u.staff ? u.name.split(/\s+/)[0] : t('My account')}{me.unread ? <i className="dot">{me.unread}</i> : null}</span></Link><ActionButton url="/api/auth/logout" label={t('Log out')} className="link-button" redirect="/" /></nav>
-      : <nav id="navigation" aria-label={t('Main navigation')}><Link href="/#approach">{t('What we do')}</Link><Link href="/#access">{t('How access works')}</Link><Link href="/#record">{t('Track record')}</Link><LangToggle lang={lang} signedIn={false} /><Link href="/login" {...cur('login')}>{t('Log in')}</Link><Link className="btn small navy" href="/#request">{t('Request access')} <span>↗</span></Link></nav>}</div></header>;
+      : <nav id="navigation" aria-label={t('Main navigation')}><Link href="/#approach">{t('What we do')}</Link><Link href="/#access">{t('How access works')}</Link><Link href="/#record">{t('Track record')}</Link><LangToggle lang={lang} signedIn={false} /><ThemeToggle /><Link href="/login" {...cur('login')}>{t('Log in')}</Link><Link className="btn small navy" href="/#request">{t('Request access')} <span>↗</span></Link></nav>}</div></header>;
 }
 export function Footer({ lang, me, page }: { lang: string; me: Me; page?: string }) {
   const t = tr(lang); const u = me.user; const nav = u?.staff ? [] : navFor(me);
-  return <footer><div className="footer-top"><div><p className="eyebrow light">MAASLAND &amp; PARTNERS</p><h2>{t('Good property.')}<br />{t('A private conversation.')}</h2>{u ? (can(me, 'sell') ? <Link className="btn cream" href="/sell">{t('Sell your property to us')} ↗</Link> : null) : <Link className="btn cream" href="/#request">{t('Request access')} ↗</Link>}</div>
+  return <footer><Skyline className="footer-skyline" /><div className="footer-top"><div><p className="eyebrow light">MAASLAND &amp; PARTNERS</p><h2>{t('Good property.')}<br />{t('A private conversation.')}</h2>{u ? (can(me, 'sell') ? <Link className="btn cream" href="/sell">{t('Sell your property to us')} ↗</Link> : null) : <Link className="btn cream" href="/#request">{t('Request access')} ↗</Link>}</div>
     <div className="footer-links">{u ? <><Link href="/listings">{u.staff ? t('Properties') : t('My selection')}</Link>{nav.map(f => <Link key={f.key} href={f.href}>{t(f.label)}</Link>)}<Link href="/account">{t('My account')}</Link>{u.staff && <Link href="/admin">{t('Staff workspace')}</Link>}</>
       : <><Link href="/#approach">{t('What we do')}</Link><Link href="/#access">{t('How access works')}</Link><Link href="/#record">{t('Track record')}</Link><Link href="/#request">{t('Request access')}</Link><Link href="/invest-in-dutch-real-estate">{t('Invest in Dutch real estate')}</Link><Link href="/de/immobilien-investment-niederlande">Immobilien-Investment Niederlande</Link><Link href="/login">{t('Log in')}</Link></>}</div></div>
     <div className="footer-bottom"><span>© 2026 Maasland &amp; Partners</span><span>{t('Private offering · by invitation · figures indicative, not advice')}</span><span>Next.js · FastAPI · PostgreSQL</span></div>
@@ -60,4 +60,6 @@ export async function SoldTable({ rows }: { rows: any[] }) {
   const t = tr(await getLang());
   return <div className="table-wrap" tabIndex={0}><table className="sold-table"><thead><tr><th>{t('City')}</th><th>{t('Type')}</th><th>{t('Units')}</th><th>{t('Price band')}</th><th>{t('Deal')}</th><th>{t('Days to offer')}</th></tr></thead><tbody>{rows.map((x, i) => <tr key={i}><td>{x.city}</td><td>{t(x.propertyType)}</td><td>{x.units}</td><td>{t(x.priceBand)}</td><td>{t(DEAL[x.dealType])}</td><td>{x.daysToOffer}</td></tr>)}</tbody></table></div>;
 }
+/** Canal-house gables drawn as one line: stepped, neck and spout gables. Decorative; draws itself in when revealed. */
+export const Skyline = ({ className = '' }: { className?: string }) => <svg className={`skyline ${className}`} viewBox="0 14 600 64" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><path pathLength={1} d="M0 72H8V58H16V44H24V32H46V44H54V58H62V72H70V56H80V36C80 22 120 22 120 36V56H130V64L160 30L190 64V48H200V30H210V20H230V30H240V48H250V60H262V40C262 26 298 26 298 40V60H310V70H318V54H326V40H334V28H356V40H364V54H372V70H380V58L410 26L440 58V46H450V34C450 20 486 20 486 34V46H496V66H504V52H512V38H534V52H542V66H550V54L575 28L600 54" /><g>{[[31, 50], [100, 44], [160, 50], [220, 36], [280, 48], [345, 46], [410, 46], [468, 38], [523, 56], [575, 46]].map(([x, y]) => <rect key={x} x={x - 5} y={y} width="10" height="14" rx="5" />)}</g></svg>;
 export const Shield = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z" /><path d="M9 12l2 2 4-4" /></svg>;

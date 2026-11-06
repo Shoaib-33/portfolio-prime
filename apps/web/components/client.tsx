@@ -50,6 +50,20 @@ export function LangToggle({ lang, signedIn }: { lang: string; signedIn: boolean
   const set = async (l: string) => { document.cookie = `pp_lang=${l};path=/;max-age=31536000;samesite=lax`; if (signedIn) await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ locale: l }) }); router.refresh(); };
   return <span className="lang-toggle" role="group" aria-label={t('Language')}>{['nl', 'en'].map(l => <button key={l} aria-pressed={lang === l} onClick={() => set(l)}>{l.toUpperCase()}</button>)}</span>;
 }
+/** Site-wide light/dark switch. The choice lives in the pp_theme cookie, so the server renders the right mode (no flash). */
+export function ThemeToggle() {
+  const t = useT();
+  const flip = () => {
+    const h = document.documentElement; const next = h.dataset.theme === 'dark' ? 'light' : 'dark';
+    h.classList.add('theme-switching'); h.dataset.theme = next;
+    document.cookie = `pp_theme=${next};path=/;max-age=31536000;samesite=lax`;
+    setTimeout(() => h.classList.remove('theme-switching'), 450);
+  };
+  return <button type="button" className="theme-toggle" onClick={flip} aria-label={t('Switch light or dark mode')} title={t('Switch light or dark mode')}>
+    <svg className="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></svg>
+    <svg className="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+  </button>;
+}
 export function SaveButton({ slug, saved, signedIn }: { slug: string; saved: boolean; signedIn: boolean }) {
   const t = useT(); const router = useRouter();
   if (!signedIn) return <a className="save" href={`/login?next=/listings/${slug}`} aria-label={t('Join free to save')}>♡</a>;

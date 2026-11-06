@@ -1,7 +1,7 @@
 /* Dutch translations, English text is the key. */
 const NL: Record<string, string> = {
   // Generic forms and buttons (components/client.tsx)
-  'Saved.': 'Opgeslagen.', 'Working…': 'Bezig…', 'Language': 'Taal', 'Menu': 'Menu', 'Close': 'Sluiten',
+  'Saved.': 'Opgeslagen.', 'Working…': 'Bezig…', 'Language': 'Taal', 'Switch light or dark mode': 'Licht of donker weergeven', 'Menu': 'Menu', 'Close': 'Sluiten',
   'Join free to save': 'Meld u gratis aan om te bewaren', 'Save': 'Bewaren', 'Remove from saved': 'Verwijderen uit bewaard',
   'View': 'Bekijken', 'Download': 'Downloaden', 'View only': 'Alleen inzien',
   // Countdown

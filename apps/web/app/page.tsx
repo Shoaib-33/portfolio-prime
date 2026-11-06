@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { api, getMe, getLang, Me } from '@/lib/api';
-import { ListingCard, SoldTable } from '@/components/ui';
-import { Icon, RequestAccessForm } from '@/components/access';
+import { ListingCard } from '@/components/ui';
+import { RegisterHome } from '@/components/home/register';
+import { Icon } from '@/components/access';
 import { navFor, can } from '@/lib/access';
 import { moneyShort } from '@/lib/format';
 import { tr, T } from '@/lib/i18n';
@@ -11,38 +12,10 @@ export default async function Home() {
   return me.user ? <MemberHome me={me} /> : <PublicHome />;
 }
 
-/* ---------- Visitors: who we are and how access works. No listings. ---------- */
-const STEPS: [string, string, string][] = [['Request access', 'Tell us what you invest in. Takes one minute.', 'mail'], ['Introduction', 'A partner calls to understand your mandate; KYC follows for transactions.', 'users'], ['Your invitation', 'A personal link with the properties selected for you and the tools you need.', 'link'], ['Review and bid', 'Underwrite, open the data room, make an offer or join a structured sale.', 'key']];
-const INSIDE: [string, string, string][] = [['vault', 'Private deal rooms', 'Codename teasers, staged sale processes and anonymised Q&A for portfolio sales.'], ['spark', 'AI analyst', 'Questions answered from the data of each property, with sources and scenarios.'], ['doc', 'Valuation & stress tests', 'Comparables, 10-year DCF, rent-regulation exposure and ESG per asset.'], ['lock', 'Secure data room', 'NDA, two-factor login and documents watermarked with your name.'], ['target', 'Smart finder', 'What your equity and financing can buy, ranked by deal score.'], ['chart', 'Market intelligence', 'Yields, prices and transactions per city, updated quarterly.']];
+/* ---------- Visitors: the Register homepage (components/home/register.tsx). No listings. ---------- */
 async function PublicHome() {
-  const [stats, sold, lang] = await Promise.all([api('/stats'), api('/listings/sold'), getLang()]); const s = stats.data || {}; const t = tr(lang);
-  return <div className="pub">
-    <section className="pub-hero"><img src="/img/hero.jpg" alt={t('Historic canal-side architecture in Amsterdam')} /><div className="pub-hero-in">
-      <div className="pub-hero-copy"><p className="eyebrow light"><span className="tiny-line" /> {t('PRIVATE OFFERING · BY INVITATION')}</p><h1>{t('Dutch residential property,')} <em>{t('offered privately.')}</em></h1>
-        <p className="pub-lead">{t('We buy apartment buildings, mixed-use assets and whole portfolios, and offer them to a closed circle of investors. Every investor sees a personal selection, with every number and document in one place.')}</p>
-        <div className="row hero-ctas"><Link className="btn cream" href="#request">{t('Request access')} <span>↗</span></Link><Link className="btn ghost-light" href="/login">{t('I have an invitation')}</Link></div></div>
-      <aside className="glass-card" aria-label={t('How we work')}><p className="eyebrow light">{t('INVITATION ONLY')}</p>{[['Personal selection', 'You see the properties chosen for your mandate, nothing else.'], ['Verified counterparties', 'Every buyer is known to us and KYC-checked before a transaction.'], ['Discreet for sellers', 'Assets are never published on the open market.']].map(([h, p]) => <div key={h} className="gc-row"><span><Icon name="check" /></span><div><b>{t(h)}</b><small>{t(p)}</small></div></div>)}</aside></div>
-      <span className="hero-caption">{t('Amsterdam · reference photography')}</span></section>
-
-    <section className="pub-stats" aria-label={t('Track record in numbers')}>{[[s.dealsClosed, 'deals closed'], [`€${s.volumeM}m`, 'transaction volume'], [s.verifiedInvestors?.toLocaleString('nl-NL'), 'investors in our network'], [s.avgDaysToOffer, 'average days to an accepted offer']].map(([v, l]) => <div key={l as string}><b>{v ?? '—'}</b><span>{t(l as string)}</span></div>)}</section>
-
-    <section className="section" id="approach"><div className="section-heading"><div><p className="eyebrow">{t('WHAT WE DO')}</p><h2>{t('Buy well. Offer privately.')}<br /><em>{t('Close with certainty.')}</em></h2></div></div>
-      <div className="pillars">{[['01', 'Acquire', 'Our acquisition team buys residential portfolios, apartment buildings and mixed-use assets directly from owners, funds and developers.'], ['02', 'Curate', 'Each investor receives a selection that fits their mandate: region, size, yield and risk. Nothing is published on the open market.'], ['03', 'Close||deal', 'NDA, data room, offers or a structured bid process, through to the notary. One account manager from first look to transfer.']].map(([n, h, p]) => <article key={n} className="pillar"><span>{n}</span><h3>{t(h)}</h3><p>{t(p)}</p></article>)}</div></section>
-
-    <section className="section pub-band" id="access"><div className="band-in"><div className="section-heading"><div><p className="eyebrow light">{t('HOW ACCESS WORKS')}</p><h2>{t('From introduction to your own selection.')}</h2></div></div>
-      <ol className="steps4">{STEPS.map(([h, p, ic], i) => <li key={h}><span className="st-ic"><Icon name={ic} /></span><small>{t('Step {n}', { n: i + 1 })}</small><b>{t(h)}</b><p>{t(p)}</p></li>)}</ol></div></section>
-
-    <section className="section"><div className="section-heading"><div><p className="eyebrow">{t('INSIDE THE PLATFORM')}</p><h2>{t('Tools for serious capital.')}</h2></div><p className="muted-small heading-note">{t('Switched on per investor, so every member sees what they need.')}</p></div>
-      <div className="inside-grid">{INSIDE.map(([ic, h, p]) => <article key={h} className="inside"><span className="in-ic"><Icon name={ic} /></span><h3>{t(h)}</h3><p>{t(p)}</p></article>)}</div></section>
-
-    <section className="section" id="record"><div className="section-heading"><div><p className="eyebrow">{t('TRACK RECORD')}</p><h2>{t('Recently closed.')}</h2></div><p className="muted-small heading-note">{t('Anonymised: city, type and price band only.')}</p></div><SoldTable rows={sold.data || []} /></section>
-
-    <section className="section"><div className="sell-band"><div><p className="eyebrow light">{t('OWNERS AND FUNDS')}</p><h2>{t('Selling a portfolio?')}</h2><p>{t('We buy directly: a firm offer, certainty of funding and full discretion. Your asset is never advertised.')}</p></div><Link className="btn cream" href="#request">{t('Talk to our acquisition team')} ↗</Link></div></section>
-
-    <section className="section request" id="request"><div className="req-copy"><p className="eyebrow">{t('REQUEST ACCESS')}</p><h2>{t('Start with a conversation.')}</h2><p>{t('Tell us briefly what you invest in or want to sell. A partner replies within one working day. Access is personal; we never share your details.')}</p>
-      <ul className="req-points"><li><Icon name="check" />{t('No cost, no obligation')}</li><li><Icon name="check" />{t('Tickets from €1m to €250m+')}</li><li><Icon name="check" />{t('English, Dutch and German')}</li></ul></div>
-      <div className="req-card"><RequestAccessForm /></div></section>
-  </div>;
+  const [stats, sold, lang] = await Promise.all([api('/stats'), api('/listings/sold'), getLang()]);
+  return <RegisterHome stats={stats.data} sold={sold.data || []} lang={lang} demo={process.env.PP_DEMO !== '0'} />;
 }
 
 /* ---------- Invited people: their selection and their tools ---------- */

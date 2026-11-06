@@ -1,0 +1,150 @@
+/* ================= Motion & finish: loaded last =================
+   Reveal states apply only under html.motion (set by components/motion.tsx), so without JS or with
+   reduced motion everything renders exactly as before. globals.css already disables animation for reduced motion. */
+:root{--ease-out:cubic-bezier(.16,1,.3,1);--brass-glow:rgba(226,195,145,.55)}
+
+/* ---------- Page fade between routes ---------- */
+/* Opacity only: a transform here would make #main the containing block for every position:fixed element inside it */
+#main.page-in{animation:page-in .5s ease-out backwards}
+@keyframes page-in{from{opacity:0}to{opacity:1}}
+
+/* ---------- Scroll progress hairline ---------- */
+.scroll-progress{position:fixed;left:0;top:0;height:2px;width:100%;z-index:60;pointer-events:none;transform-origin:0 50%;transform:scaleX(var(--sp,0));background:linear-gradient(90deg,#b68550,#e2c391)}
+html:not(.motion) .scroll-progress{display:none}
+
+/* ---------- Header turns to frosted glass once you scroll ---------- */
+#site-header .header{transition:background .35s,box-shadow .35s,border-color .35s}
+#site-header.scrolled .header{background:rgba(250,249,246,.82);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);box-shadow:0 10px 30px -18px rgba(24,46,50,.35);border-bottom-color:transparent}
+.header nav>a:not(.btn):not(.account-btn):not(.icon-link){position:relative}
+@media (min-width:901px){
+  .header nav>a:not(.btn):not(.account-btn):not(.icon-link)::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:1px;background:var(--accent);transform:scaleX(0);transform-origin:100% 50%;transition:transform .45s var(--ease-out)}
+  .header nav>a:not(.btn):not(.account-btn):not(.icon-link):hover::after{transform:scaleX(1);transform-origin:0 50%}
+}
+
+/* ---------- Scroll reveal ---------- */
+html.motion .rv{opacity:0;transform:translateY(34px);transition:opacity .9s var(--ease-out) var(--d,0ms),transform .9s var(--ease-out) var(--d,0ms)}
+html.motion .rv.in{opacity:1;transform:none}
+html.motion tr.rv{transform:translateX(-14px)}
+html.motion tr.rv.in{transform:none}
+
+/* ---------- Hero: slow push-in, parallax, staggered entrance, gilded headline ---------- */
+.pub-hero>img{animation:hero-push 2.8s var(--ease-out) both;translate:0 var(--py,0);will-change:translate}
+@keyframes hero-push{from{scale:1.14;opacity:0}to{scale:1.04;opacity:.75}}
+.pub-hero>img{scale:1.04}
+.pub-hero::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(60% 50% at 75% 30%,rgba(226,195,145,.16),transparent 70%);animation:fade-in 3s ease-out .4s both}
+.pub-hero-in{z-index:2}
+.pub-hero-copy>*{animation:rise 1.1s var(--ease-out) both}
+.pub-hero-copy>.eyebrow{animation-delay:.25s}
+.pub-hero-copy>h1{animation:unmask 1.3s var(--ease-out) .4s both}
+.pub-hero-copy>.pub-lead{animation-delay:.75s}
+.pub-hero-copy>.hero-ctas{animation-delay:.95s}
+.pub-hero .glass-card{animation:rise 1.2s var(--ease-out) 1.1s both}
+.pub-hero .gc-row{animation:rise .9s var(--ease-out) both}
+.pub-hero .gc-row:nth-of-type(1){animation-delay:1.35s}.pub-hero .gc-row:nth-of-type(2){animation-delay:1.5s}.pub-hero .gc-row:nth-of-type(3){animation-delay:1.65s}
+.hero-caption{animation:fade-in 1.5s ease-out 1.8s both}
+.pub-hero h1 em{background:linear-gradient(100deg,#e7cfa6 0%,#e7cfa6 40%,#fff7e6 50%,#e7cfa6 60%,#e7cfa6 100%);background-size:250% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gild 2.4s ease-in-out 1.6s both;padding-right:.08em}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes unmask{from{opacity:0;clip-path:inset(-20% -10% 100% -10%);transform:translateY(40px)}to{opacity:1;clip-path:inset(-20% -10% -25% -10%);transform:none}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes gild{from{background-position:100% 0}to{background-position:0 0}}
+.glass-card{transition:transform .5s var(--ease-out),border-color .5s,background .5s}
+.glass-card:hover{transform:translateY(-4px);border-color:rgba(226,195,145,.45);background:rgba(255,255,255,.11)}
+
+/* Room for the stats panel that floats over the hero's lower edge */
+.pub-hero-in{padding-bottom:128px}
+.hero-caption{bottom:84px}
+
+/* ---------- Stats: floating panel over the hero ---------- */
+.pub-stats{position:relative;z-index:3;max-width:1220px;margin:-64px auto 0;border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 60px -30px rgba(24,46,50,.35),0 2px 6px rgba(24,46,50,.05);overflow:hidden;width:calc(100% - 2 * clamp(16px,4.4%,50px))}
+.pub-stats div{padding:34px 36px 30px;position:relative;transition:background .4s}
+.pub-stats div::before{content:"";width:28px;height:2px;background:var(--accent);margin-bottom:10px;transition:width .5s var(--ease-out)}
+.pub-stats div:hover{background:#fcfaf5}
+.pub-stats div:hover::before{width:56px}
+.pub-stats b{font-variant-numeric:tabular-nums}
+
+/* ---------- Pillars: ghost numerals, brass rule, lift ---------- */
+.pillar{position:relative;overflow:hidden;transition:transform .5s var(--ease-out),box-shadow .5s var(--ease-out),border-color .5s}
+.pillar>span{font:300 64px/1 var(--display);letter-spacing:-2px;color:transparent;-webkit-text-stroke:1px #c9a77c;margin-bottom:8px;transition:color .5s,-webkit-text-stroke-color .5s}
+.pillar::before{content:"";position:absolute;left:0;top:0;height:3px;width:100%;background:linear-gradient(90deg,#b68550,#e2c391);transform:scaleX(0);transform-origin:0 50%;transition:transform .7s var(--ease-out)}
+.pillar:hover{transform:translateY(-6px);box-shadow:0 30px 50px -28px rgba(24,46,50,.35);border-color:#e3d6c1}
+.pillar:hover::before{transform:scaleX(1)}
+.pillar:hover>span{color:#f4ead9;-webkit-text-stroke-color:#b68550}
+
+/* ---------- Pointer spotlight on cards ---------- */
+.inside,.pillar,.tool,.steps4 li{--mx:50%;--my:-200px}
+.inside::after,.pillar::after,.tool::after,.steps4 li::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .4s;background:radial-gradient(380px circle at var(--mx) var(--my),rgba(226,195,145,.22),transparent 60%)}
+.steps4 li::before{background:radial-gradient(320px circle at var(--mx) var(--my),rgba(226,195,145,.14),transparent 60%)}
+.inside:hover::after,.pillar:hover::after,.tool:hover::after,.steps4 li:hover::before{opacity:1}
+.inside,.tool{position:relative;transition:transform .5s var(--ease-out),box-shadow .5s var(--ease-out),border-color .4s}
+.inside:hover{transform:translateY(-5px);box-shadow:0 26px 44px -26px rgba(24,46,50,.3);border-color:#e3d6c1}
+.inside .in-ic,.tool .in-ic{transition:transform .6s var(--ease-out),background .4s,color .4s}
+.inside:hover .in-ic,.tool:hover .in-ic{transform:rotate(-8deg) scale(1.08);background:var(--navy);color:#e2c391}
+
+/* ---------- Access band: centred, steps light up in sequence ---------- */
+.section.pub-band{max-width:none;margin:0 clamp(0px,2.2%,32px);background:radial-gradient(70% 90% at 100% 0%,#24413f 0%,transparent 60%),var(--navy);overflow:hidden;position:relative}
+.steps4 li{transition:transform .5s var(--ease-out),background .4s,border-color .4s}
+.steps4 li:hover{transform:translateY(-5px);background:rgba(255,255,255,.08);border-color:rgba(226,195,145,.4)}
+.steps4 .st-ic{transition:transform .6s var(--ease-out),box-shadow .6s}
+.steps4 li:hover .st-ic{transform:scale(1.08);box-shadow:0 0 0 8px rgba(226,195,145,.12)}
+html.motion .steps4 li.rv .st-ic{transform:scale(.6);opacity:0;transition:transform .8s var(--ease-out) calc(var(--d,0ms) + .25s),opacity .6s calc(var(--d,0ms) + .25s)}
+html.motion .steps4 li.rv.in .st-ic{transform:none;opacity:1}
+.steps4 li:not(:last-child)::after{animation:nudge 2.4s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(5px);opacity:1}}
+
+/* ---------- Track record: a calmer, card-like table ---------- */
+.sold-table{font-variant-numeric:tabular-nums}
+.table-wrap:has(.sold-table){border-radius:18px;background:var(--card);box-shadow:var(--shadow)}
+.sold-table th{background:var(--soft,#f3f1ea);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;padding:16px 22px}
+.sold-table td{padding:18px 22px;transition:background .3s}
+.sold-table td:first-child{font-family:var(--display);font-weight:600;color:var(--navy);position:relative}
+.sold-table td:first-child::before{content:"";position:absolute;left:0;top:22%;bottom:22%;width:3px;border-radius:3px;background:var(--accent);transform:scaleY(0);transition:transform .4s var(--ease-out)}
+.sold-table tbody tr:hover td{background:#fbf8f2}
+.sold-table tbody tr:hover td:first-child::before{transform:scaleY(1)}
+
+/* ---------- Sell band with skyline ---------- */
+.sell-band{position:relative;overflow:hidden;border-radius:22px;padding:56px 56px 96px;background:radial-gradient(60% 120% at 0% 100%,#24413f,transparent 70%),var(--navy)}
+.sell-band>*:not(.skyline){position:relative;z-index:1}
+.band-skyline{position:absolute;right:28px;bottom:18px;width:min(420px,36%);height:auto;opacity:.45;z-index:0}
+
+/* ---------- Skyline line drawing ---------- */
+.skyline{display:block;fill:none;stroke:#c9a77c;stroke-width:1.2;stroke-linejoin:round;vector-effect:non-scaling-stroke;overflow:visible}
+.skyline path{stroke-dasharray:1;stroke-dashoffset:0}
+.skyline rect{fill:rgba(226,195,145,.12);stroke:none}
+html.motion .skyline.rv{opacity:1;transform:none}
+html.motion .skyline.rv path{stroke-dashoffset:1;transition:stroke-dashoffset 3.2s cubic-bezier(.65,0,.35,1) .2s}
+html.motion .skyline.rv.in path{stroke-dashoffset:0}
+html.motion .skyline.rv rect{opacity:0;transition:opacity 1s ease-out 2.4s}
+html.motion .skyline.rv.in rect{opacity:1}
+.footer-skyline{width:100%;max-width:760px;height:auto;margin:-24px auto 48px;opacity:.5}
+
+/* ---------- Buttons: sheen and arrow nudge ---------- */
+.btn{position:relative;overflow:hidden;transition:background .3s,transform .4s var(--ease-out),box-shadow .4s var(--ease-out),border-color .3s}
+.btn::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-20deg);pointer-events:none;transition:left .8s var(--ease-out)}
+.btn.cream::after,.btn.outline::after{background:linear-gradient(100deg,transparent,rgba(182,133,80,.18),transparent)}
+.btn:hover::after{left:130%}
+.btn:hover{box-shadow:0 14px 28px -16px rgba(24,46,50,.55)}
+.btn>span:last-child{display:inline-block;transition:transform .4s var(--ease-out)}
+.btn:hover>span:last-child:not(:first-child){transform:translate(3px,-3px)}
+
+/* ---------- Request form: softer fields, brass focus glow ---------- */
+.req-card{border-radius:26px;box-shadow:0 40px 80px -50px rgba(24,46,50,.45),0 2px 6px rgba(24,46,50,.04)}
+.req-card input:not([type=checkbox]):not([type=radio]),.req-card select,.req-card textarea{border-radius:10px;border-color:#dcdfd6;background:#fdfcf9;transition:border-color .25s,box-shadow .25s,background .25s}
+.req-card input:not([type=checkbox]):not([type=radio]):hover,.req-card select:hover,.req-card textarea:hover{border-color:#c4b49c}
+.req-card input:not([type=checkbox]):not([type=radio]):focus,.req-card select:focus,.req-card textarea:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px rgba(182,133,80,.16)}
+.req-points li{transition:transform .4s var(--ease-out)}
+.req-points li:hover{transform:translateX(4px)}
+
+/* ---------- Member home figures ---------- */
+.mh-stats b{font-variant-numeric:tabular-nums}
+
+/* ---------- Phones ---------- */
+@media (max-width:900px){
+  .pub-hero-in{padding-bottom:112px}
+  .hero-caption{display:none}
+  .pub-stats{margin-top:-48px;border-radius:18px}
+  .pub-stats div{padding:24px 20px}
+  .section.pub-band{margin:0}
+  .sell-band{padding:32px 26px 120px}
+  .band-skyline{width:calc(100% - 52px);right:26px;bottom:16px}
+  .footer-skyline{margin:-10px 0 34px}
+}
