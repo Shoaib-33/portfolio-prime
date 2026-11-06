@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # One-time setup of a fresh Ubuntu 24.04 VPS for Maasland & Partners. Run as root:
-#   curl -fsSL https://raw.githubusercontent.com/Shoaib-33/portfolio-prime/<branch>/deploy/setup.sh -o /tmp/setup.sh && BRANCH=<branch> bash /tmp/setup.sh
+#   curl -fsSL https://raw.githubusercontent.com/Shoaib-33/portfolio-prime/vps-deploy/deploy/setup.sh -o /tmp/setup.sh && bash /tmp/setup.sh
+# The code is in a private repository, so the first run stops and shows a read-only deploy key to add on GitHub; then run it again.
 # Safe to run again: it keeps existing settings, secrets and data.
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-maaslandpartner.nl}"
 BRANCH="${BRANCH:-main}"
-REPO="https://github.com/Shoaib-33/portfolio-prime.git"
+REPO="git@github.com:Shoaib-33/Maasland-Partners.git"
+REPO_KEYS="https://github.com/Shoaib-33/Maasland-Partners/settings/keys"
 APP=/opt/maasland
 ENVF=/etc/maasland.env
 BACKUPS=/var/backups/maasland
@@ -38,7 +40,21 @@ fi
 
 echo '== 4/8 App user and code'
 id maasland >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin maasland
-if [ ! -d "$APP/.git" ]; then git clone --branch "$BRANCH" "$REPO" "$APP"; fi
+KEY=/home/maasland/.ssh/id_ed25519
+if [ ! -f "$KEY" ]; then
+  sudo -u maasland mkdir -p -m 700 /home/maasland/.ssh
+  sudo -u maasland ssh-keygen -q -t ed25519 -N '' -C "maasland-vps-deploy" -f "$KEY"
+  ssh-keyscan -t ed25519 github.com 2>/dev/null | sudo -u maasland tee -a /home/maasland/.ssh/known_hosts >/dev/null
+fi
+if ! sudo -u maasland -H git ls-remote "$REPO" >/dev/null 2>&1; then
+  echo; echo '== ACTION NEEDED: add this read-only deploy key on GitHub =='
+  echo "Open $REPO_KEYS -> Add deploy key. Title: maasland-vps. Leave \"Allow write access\" OFF. Paste:"
+  echo; cat "$KEY.pub"; echo
+  echo 'Then run the same command again:  bash /tmp/setup.sh'
+  exit 0
+fi
+mkdir -p "$APP"; chown maasland:maasland "$APP"
+if [ ! -d "$APP/.git" ]; then sudo -u maasland -H git clone --branch "$BRANCH" "$REPO" "$APP"; fi
 chown -R maasland:maasland "$APP"
 mkdir -p "$BACKUPS"; chown postgres:postgres "$BACKUPS"; chmod 750 "$BACKUPS"
 
