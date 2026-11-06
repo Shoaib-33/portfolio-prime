@@ -230,6 +230,14 @@ CITY_GEO = {
     'Amsterdam': {'province': 'Noord-Holland', 'lat': 52.3728, 'lng': 4.8936}, 'Haarlem': {'province': 'Noord-Holland', 'lat': 52.3808, 'lng': 4.6368},
     'Rotterdam': {'province': 'Zuid-Holland', 'lat': 51.9225, 'lng': 4.4792}, 'Den Haag': {'province': 'Zuid-Holland', 'lat': 52.0705, 'lng': 4.3007}, 'Wassenaar': {'province': 'Zuid-Holland', 'lat': 52.1428, 'lng': 4.4014},
     'Utrecht': {'province': 'Utrecht', 'lat': 52.0907, 'lng': 5.1214}, 'Eindhoven': {'province': 'Noord-Brabant', 'lat': 51.4416, 'lng': 5.4697},
+    # More city centres (approximate), so maps and radius search work outside the Randstad too
+    'Amersfoort': {'province': 'Utrecht', 'lat': 52.1561, 'lng': 5.3878}, 'Delft': {'province': 'Zuid-Holland', 'lat': 52.0116, 'lng': 4.3571},
+    'Leiden': {'province': 'Zuid-Holland', 'lat': 52.1601, 'lng': 4.4970}, 'Schiedam': {'province': 'Zuid-Holland', 'lat': 51.9192, 'lng': 4.3988},
+    'Zwolle': {'province': 'Overijssel', 'lat': 52.5168, 'lng': 6.0830}, 'Enschede': {'province': 'Overijssel', 'lat': 52.2215, 'lng': 6.8937},
+    'Groningen': {'province': 'Groningen', 'lat': 53.2194, 'lng': 6.5665}, 'Leeuwarden': {'province': 'Friesland', 'lat': 53.2012, 'lng': 5.7999},
+    'Arnhem': {'province': 'Gelderland', 'lat': 51.9851, 'lng': 5.8987}, 'Nijmegen': {'province': 'Gelderland', 'lat': 51.8126, 'lng': 5.8372}, 'Apeldoorn': {'province': 'Gelderland', 'lat': 52.2112, 'lng': 5.9699},
+    'Tilburg': {'province': 'Noord-Brabant', 'lat': 51.5555, 'lng': 5.0913}, 'Breda': {'province': 'Noord-Brabant', 'lat': 51.5719, 'lng': 4.7683}, "'s-Hertogenbosch": {'province': 'Noord-Brabant', 'lat': 51.6978, 'lng': 5.3037},
+    'Maastricht': {'province': 'Limburg', 'lat': 50.8514, 'lng': 5.6910}, 'Almere': {'province': 'Flevoland', 'lat': 52.3508, 'lng': 5.2647},
 }
 PROVINCES = ['Drenthe', 'Flevoland', 'Friesland', 'Gelderland', 'Groningen', 'Limburg', 'Noord-Brabant', 'Noord-Holland', 'Overijssel', 'Utrecht', 'Zeeland', 'Zuid-Holland']
 

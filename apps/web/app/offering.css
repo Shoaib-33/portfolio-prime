@@ -1,0 +1,90 @@
+/* Homepage: "In the offering now" (mandate check + locked teasers) and the closed-deals map. Light and dark mode via .reg tokens. */
+
+/* ---------- Mandate check ---------- */
+.rg-mandate{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);border:1px solid var(--line-2);background:var(--bg-2);margin-bottom:clamp(28px,3vw,40px)}
+.rg-mandate-q{display:grid;gap:22px;padding:30px 32px}
+.rg-mandate-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.rg-mandate label{display:grid;gap:8px}
+.reg .rg-mandate label>span{font:400 12px/1.3 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.reg .rg-mandate select{box-shadow:none;outline:none;margin:0;border-top:0;border-left:0;border-right:0;background-color:transparent;appearance:none;-webkit-appearance:none;width:100%;padding:12px 30px 12px 0;border:0;border-bottom:1px solid var(--line-2);border-radius:0;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23888' fill='none' stroke-width='1.3'/%3E%3C/svg%3E") right 4px center no-repeat;font:400 17px/1.3 var(--sans);color:var(--fg);cursor:pointer;transition:border-color .3s}
+.reg .rg-mandate select:hover{border-bottom-color:var(--fg)}
+.reg .rg-mandate select:focus{outline:none;border-bottom-color:var(--accent);box-shadow:0 1px 0 var(--accent)}
+.reg .rg-mandate select option{background:var(--bg-2);color:var(--fg)}
+.rg-mandate-a{display:grid;align-content:center;justify-items:start;gap:12px;padding:30px 32px;border-left:1px solid var(--line-2);background:var(--bg)}
+.rg-mandate-a b{font:300 clamp(64px,6vw,96px)/.9 var(--display);color:var(--accent);font-variant-numeric:lining-nums;animation:rg-pop-num .5s var(--e) both}
+@keyframes rg-pop-num{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.rg-mandate-a p{font-size:16px;max-width:30ch}
+.rg-mandate-a.is-busy b{opacity:.5}
+.rg-mandate-a .rg-btn{margin-top:6px}
+
+/* ---------- Locked teaser cards ---------- */
+.rg-teasers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.rg-teaser{display:grid;grid-template-rows:auto 1fr;background:var(--surface);border:1px solid var(--line);transition:border-color .4s,transform .6s var(--e)}
+.rg-teaser:hover{border-color:var(--line-2);transform:translateY(-4px)}
+.rg-teaser-img{position:relative;overflow:hidden;aspect-ratio:4/3;background:var(--bg-3)}
+.rg-teaser-img img{position:absolute;inset:-12px;width:calc(100% + 24px);height:calc(100% + 24px);object-fit:cover;filter:blur(14px) saturate(.75) brightness(.8);transform:scale(1.05);transition:filter .8s,transform 1.4s var(--e)}
+.rg-teaser:hover .rg-teaser-img img{filter:blur(10px) saturate(.9) brightness(.85);transform:scale(1.1)}
+.rg-teaser-lock{position:absolute;left:50%;top:50%;display:grid;place-items:center;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(14,14,13,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;transition:transform .5s var(--e),background .4s}
+.rg-teaser:hover .rg-teaser-lock{transform:scale(1.08);background:var(--accent)}
+.rg-teaser-lock svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.rg-teaser-img .rg-tag{position:absolute;left:12px;top:12px}
+.rg-teaser-body{display:grid;gap:8px;align-content:start;padding:20px 20px 22px}
+.rg-teaser-meta{font:400 11.5px/1.3 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)!important}
+.reg .rg-teaser h3{font:300 28px/1.05 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.rg-teaser-body>p:not(.rg-teaser-meta){font-size:14.5px}
+.rg-teaser dl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
+.rg-teaser dl div{display:grid;gap:4px}
+.rg-teaser dt{font:400 11px/1.3 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rg-teaser dd{margin:0;font:400 15px/1.2 var(--sans);color:var(--fg);font-variant-numeric:tabular-nums}
+.rg-teaser-cta{display:inline-flex;align-items:center;gap:10px;margin-top:6px;font:400 12px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--fg);padding:8px 0;border-bottom:1px solid var(--accent);justify-self:start;transition:color .3s}
+.rg-teaser-cta:hover{color:var(--accent)}
+.rg-teaser-cta:hover .rg-arrow{transform:translateX(4px)}
+.reg .rg-teasers-more{margin-top:26px;font:400 12.5px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)!important}
+
+/* ---------- Closed-deals map ---------- */
+.rg-dealmap{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(24px,3vw,48px);align-items:stretch;margin-bottom:40px}
+.rg-dealmap-canvas{height:clamp(380px,36vw,520px);border:1px solid var(--line-2);background:var(--bg-3)}
+.rg-dealmap-side{display:grid;align-content:start;gap:22px}
+.rg-dealmap-sum{display:grid;grid-template-columns:1fr 1fr;border-block:1px solid var(--line-2)}
+.rg-dealmap-sum div{display:grid;gap:6px;padding:18px 0}
+.rg-dealmap-sum div+div{padding-left:24px;border-left:1px solid var(--line)}
+.rg-dealmap-sum b{font:300 clamp(40px,3.6vw,56px)/1 var(--display);color:var(--fg);font-variant-numeric:lining-nums}
+.rg-dealmap-sum span{font:400 12px/1.3 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rg-dealmap-side ul{display:grid}
+.rg-dealmap-side li{display:grid;grid-template-columns:1fr auto;gap:2px 16px;padding:14px 0;border-bottom:1px solid var(--line);cursor:default;outline:none;transition:padding .45s var(--e),background .3s}
+.rg-dealmap-side li:hover,.rg-dealmap-side li:focus-visible{padding-left:12px;background:var(--bg-3)}
+.rg-dm-city{grid-column:1;font:400 22px/1.1 var(--display);text-transform:uppercase;letter-spacing:.04em;color:var(--fg)}
+.rg-dealmap-side li>span:nth-child(2){grid-column:1;font-size:14px;color:var(--text)}
+.rg-dm-days{grid-column:2;grid-row:1/3;align-self:center;font:400 12px/1.3 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.rg-dm-m.on .rg-dm-pin{scale:1.35;background:var(--fg);box-shadow:0 0 0 6px rgba(228,87,59,.45),0 6px 18px rgba(0,0,0,.4)}
+.rg-dm-m.on{z-index:9}
+.rg-dealmap-note{margin-top:10px;font:400 12px/1.4 var(--sans);letter-spacing:.06em;color:var(--muted)!important}
+.rg-dm-m{width:0;height:0;overflow:visible}
+.rg-dm-pin{--s:1;position:absolute;left:0;top:0;translate:-50% -50%;transition:scale .35s var(--e),background .3s,box-shadow .3s;width:calc(18px * var(--s));height:calc(18px * var(--s));padding:0;border:0;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(228,87,59,.25),0 4px 14px rgba(0,0,0,.35);cursor:pointer;animation:rg-pin-in .7s var(--e) both;animation-delay:calc(var(--i) * 90ms + .2s)}
+.rg-dm-pin::after{content:"";position:absolute;inset:-6px;pointer-events:none;border-radius:50%;border:1px solid rgba(228,87,59,.6);animation:rg-pin-ring 2.6s ease-out infinite;animation-delay:calc(var(--i) * 300ms)}
+@keyframes rg-pin-in{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:none}}
+@keyframes rg-pin-ring{from{opacity:.9;transform:scale(.8)}to{opacity:0;transform:scale(2.2)}}
+.rg-dm-tip{position:absolute;left:50%;bottom:calc(100% + 14px);transform:translate(-50%,6px);display:grid;gap:4px;min-width:220px;padding:12px 14px;background:#161615;border:1px solid rgba(237,233,226,.22);color:#B9B4AA;font:400 12.5px/1.4 var(--sans);text-align:left;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .25s,transform .35s var(--e);z-index:5}
+.rg-dm-tip b{font:400 20px/1.1 var(--display);text-transform:uppercase;letter-spacing:.04em;color:#EDE9E2}
+.rg-dm-pin:hover .rg-dm-tip,.rg-dm-pin:focus-visible .rg-dm-tip{opacity:1;transform:translate(-50%,0)}
+.rg-dm-pin:hover,.rg-dm-pin:focus-visible{z-index:10}
+/* The light base map sits quieter in dark mode */
+html[data-theme=dark] .rg-dealmap .maplibregl-canvas{filter:brightness(.62) contrast(1.05) saturate(.6)}
+
+@media (max-width:1080px){
+  .rg-mandate{grid-template-columns:1fr}
+  .rg-mandate-a{border-left:0;border-top:1px solid var(--line-2)}
+  .rg-teasers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rg-dealmap{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .rg-mandate-q,.rg-mandate-a{padding:24px 20px}
+  .rg-mandate-fields{grid-template-columns:1fr}
+  .rg-mandate-a .rg-btn{width:100%}
+  .rg-teasers{grid-template-columns:1fr}
+  .rg-dm-tip{min-width:180px;white-space:normal}
+}
+@media (prefers-reduced-motion:reduce){.rg-dm-pin,.rg-dm-pin::after{animation:none}}
+
+/* Dark mode: the chevron in cream, so it shows on the dark panel */
+html[data-theme=dark] .reg .rg-mandate select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23EDE9E2' fill='none' stroke-width='1.3'/%3E%3C/svg%3E")}

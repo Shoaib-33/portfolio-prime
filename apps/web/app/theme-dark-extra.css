@@ -83,15 +83,15 @@ strong,b,.btn,.pill,.chip,.tab,[role=tab]{font-weight:500}
 body{font-variant-numeric:lining-nums}
 /* Long investor menus: tighten, then keep only the avatar for the account link */
 #site-header .brand>span:last-child{letter-spacing:.26em}
-@media (max-width:1560px){
+@media (max-width:1700px){
   #site-header nav{gap:16px}
   #site-header nav>a,#site-header nav .link-button{letter-spacing:.1em}
   #site-header .account-btn>span:not(.avatar){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   #site-header .account-btn{padding:4px;min-width:0}
 }
 
-/* The member menu is long: switch to the menu button below 1360px (the light theme did this at 900px) */
-@media (max-width:1360px){
+/* The member menu is long: switch to the menu button below 1400px (the light theme did this at 900px) */
+@media (max-width:1400px){
   #site-header .menu-toggle{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--x-line-2);border-radius:0;background:transparent;color:var(--x-fg);font:400 10.5px/1 var(--sans);letter-spacing:.18em;text-transform:uppercase}
   #site-header .menu-toggle svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4}
   #site-header #navigation{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;padding:12px var(--pad,32px) 28px;background:var(--x-bg);border-bottom:1px solid var(--x-line);box-shadow:0 30px 40px var(--x-drop)}
@@ -112,4 +112,4 @@ input[type=file]::file-selector-button{margin-right:12px;padding:8px 14px;border
 input[type=file]::file-selector-button:hover{border-color:var(--x-accent);color:var(--x-accent)}
 /* Light/dark switch in the member header */
 #site-header .theme-toggle{border-color:var(--x-line-2);color:var(--x-fg);flex-shrink:0}
-@media (max-width:1360px){#site-header #navigation .theme-toggle{align-self:flex-start;margin:0 0 16px}}
+@media (max-width:1400px){#site-header #navigation .theme-toggle{align-self:flex-start;margin:0 0 16px}}

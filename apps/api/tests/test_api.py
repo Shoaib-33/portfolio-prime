@@ -230,3 +230,31 @@ def test_retired_staff_roles_are_deactivated_on_upgrade(client):
     seed_access()
     assert client().post('/auth/login', json={'email': 'oldsales@demo.nl', 'password': 'Demo2026!'}).status_code == 401, 'deactivated after the upgrade'
     assert all(u['email'] != 'oldsales@demo.nl' for u in client('admin@demo.nl').get('/admin/access').json()['users'])
+
+
+def test_visitor_teasers_are_anonymised(client):
+    """The homepage teasers and mandate check are public, but never reveal a name, address, slug or exact price."""
+    v = client(); r = v.get('/offering/teasers'); assert r.status_code == 200
+    d = r.json(); assert d['total'] >= len(d['items']) > 0
+    allowed = {'codename', 'city', 'province', 'propertyType', 'category', 'units', 'priceBand', 'yieldBand', 'dealType', 'status', 'isNew'}
+    for x in d['items']:
+        assert set(x) == allowed, 'only anonymised fields leave the server'
+        assert x['codename'].startswith('Project ') and x['priceBand'].startswith(('€', 'Price on request'))
+    names = {l['name'] for l in client('admin@demo.nl').get('/listings').json()}
+    assert not names & {x['codename'] for x in d['items']}, 'codenames never equal the real listing name'
+
+
+def test_mandate_check_counts_only(client):
+    v = client(); allr = v.get('/offering/match').json()
+    assert set(allr) == {'count', 'total', 'regions'} and allr['count'] == allr['total'] > 0
+    big = v.get('/offering/match', params={'ticket': '50plus'}).json(); small = v.get('/offering/match', params={'ticket': 'lt2'}).json()
+    assert big['count'] + small['count'] <= allr['total']
+    reg = allr['regions'][0]; one = v.get('/offering/match', params={'region': reg}).json()
+    assert 0 < one['count'] <= allr['total']
+    assert v.get('/offering/match', params={'region': 'Nowhere'}).json()['count'] == 0
+
+
+def test_track_record_has_city_coordinates_only(client):
+    for x in client().get('/listings/sold').json():
+        assert 'address' not in x and 'slug' not in x
+        if 'lat' in x: assert 50 < x['lat'] < 54 and 3 < x['lng'] < 8

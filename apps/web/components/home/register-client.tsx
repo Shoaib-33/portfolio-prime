@@ -75,9 +75,16 @@ export function RgMotion() {
     h.classList.add('rg-motion');
     const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
     root.querySelectorAll<HTMLElement>('[data-rv]').forEach(el => { const sib = Array.from(el.parentElement?.children || []).filter(c => c.hasAttribute('data-rv')); el.style.setProperty('--d', `${Math.min(Math.max(0, sib.indexOf(el)), 5) * 90}ms`); io.observe(el); });
-    // Gentle parallax on the hero photo
+    // Gentle parallax on the hero photo; showcase cards drift at their own speed (data-depth) on wide screens
     const media = root.querySelector<HTMLElement>('.rg-hero-media'); let raf = 0;
-    const onScroll = () => { if (raf || !media) return; raf = requestAnimationFrame(() => { raf = 0; const y = Math.min(scrollY, innerHeight); media.style.setProperty('--py', `${(y * 0.18).toFixed(1)}px`); }); };
+    const cards = Array.from(root.querySelectorAll<HTMLElement>('[data-depth]')); const wide = matchMedia('(min-width: 1081px)');
+    const onScroll = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0;
+      if (media) media.style.setProperty('--py', `${(Math.min(scrollY, innerHeight) * 0.18).toFixed(1)}px`);
+      for (const c of cards) {
+        if (!wide.matches) { c.style.removeProperty('--sy'); continue; }
+        const r = c.getBoundingClientRect(); if (r.bottom < -200 || r.top > innerHeight + 200) continue;
+        c.style.setProperty('--sy', `${((r.top + r.height / 2 - innerHeight / 2) * Number(c.dataset.depth || 0)).toFixed(1)}px`);
+      } }); };
     addEventListener('scroll', onScroll, { passive: true }); onScroll();
     return () => { io.disconnect(); removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); h.classList.remove('rg-ready'); };
   }, []);

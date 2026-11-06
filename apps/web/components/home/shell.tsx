@@ -29,7 +29,7 @@ export function RegisterShell({ lang, demo, home = false, current, children }: {
       <div className="rg-foot-cta"><div><h2>{t('Start with a conversation.')}</h2><p>{t('A partner replies within one working day.')}</p></div><a className="rg-btn rg-btn-accent" href={`${base}#request`}>{t('Request access')}<Arrow /></a></div>
       <div className="rg-foot-grid">
         <div className="rg-foot-brand"><Mark light /><p>{t('Private real estate for professional investors in the Netherlands.')}</p></div>
-        <nav aria-label={t('Footer')}><h3>{t('Explore')}</h3>{index.map(([id, l]) => <a key={id} href={`${base}#${id}`}>{l}</a>)}</nav>
+        <nav aria-label={t('Footer')}><h3>{t('Explore')}</h3>{index.map(([id, l]) => <a key={id} href={`${base}#${id}`}>{l}</a>)}<a href={`${base}#faq`}>{t('FAQ')}</a></nav>
         <nav aria-label={t('For investors')}><h3>{t('For investors')}</h3><Link href="/invest-in-dutch-real-estate">{t('Invest in Dutch real estate')}</Link><Link href="/de/immobilien-investment-niederlande">Immobilien-Investment Niederlande</Link><Link href="/login">{t('Log in')}</Link><a href={`${base}#request`}>{t('Request access')}</a></nav>
       </div>
       <div className="rg-foot-legal"><span>© 2026 Maasland &amp; Partners</span><span>{t('Private offering · by invitation · figures indicative, not advice')}</span></div>

@@ -1,0 +1,39 @@
+/* Homepage FAQ: title on the left (sticky), grouped questions on the right. Light and dark mode via .reg tokens. */
+.rg-faq{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(40px,6vw,96px);align-items:start;max-width:calc(var(--max) + 2 * var(--pad));margin:0 auto;box-sizing:border-box;border-top:1px solid var(--line)}
+.reg .rg-faq>*{margin:0;max-width:none}
+.rg-faq-side{position:sticky;top:120px;display:grid;gap:22px;justify-items:start}
+.rg-faq-list{display:grid;gap:44px}
+.rg-faq-group{display:grid}
+.rg-faq-g{font:400 12px/1.3 var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--accent)!important;padding-bottom:14px;border-bottom:1px solid var(--line-2)}
+
+.rg-faq-item{border-bottom:1px solid var(--line)}
+.rg-faq-item summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;padding:22px 0;cursor:pointer;list-style:none;transition:padding .45s var(--e)}
+.rg-faq-item summary::-webkit-details-marker{display:none}
+.rg-faq-item summary:hover{padding-left:8px}
+.rg-faq-item summary:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+.rg-faq-n{font:400 12px/1 var(--sans);letter-spacing:.1em;color:var(--muted);font-variant-numeric:tabular-nums}
+.rg-faq-q{font:400 clamp(20px,1.7vw,25px)/1.25 var(--display);color:var(--fg);transition:color .3s}
+.rg-faq-item summary:hover .rg-faq-q,.rg-faq-item[open] .rg-faq-q{color:var(--accent)}
+/* Plus that turns into a minus */
+.rg-faq-item summary i{position:relative;width:16px;height:16px;flex-shrink:0}
+.rg-faq-item summary i::before,.rg-faq-item summary i::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--fg);transition:transform .45s var(--e),background .3s}
+.rg-faq-item summary i::after{transform:rotate(90deg)}
+.rg-faq-item[open] summary i::after{transform:rotate(0deg)}
+.rg-faq-item[open] summary i::before,.rg-faq-item[open] summary i::after{background:var(--accent)}
+.rg-faq-a{padding:0 40px 26px 48px}
+.rg-faq-a p{font-size:16px;line-height:1.75;max-width:62ch}
+/* Smooth open and close where the browser supports animating to auto height */
+@supports (interpolate-size:allow-keywords){
+  .rg-faq{interpolate-size:allow-keywords}
+  .rg-faq-item::details-content{height:0;overflow:clip;opacity:0;transition:height .5s var(--e),opacity .4s ease,content-visibility .5s allow-discrete}
+  .rg-faq-item[open]::details-content{height:auto;opacity:1}
+}
+
+@media (max-width:900px){
+  .rg-faq{grid-template-columns:1fr}
+  .rg-faq-side{position:static}
+}
+@media (max-width:640px){
+  .rg-faq-item summary{gap:12px;padding:18px 0}
+  .rg-faq-a{padding:0 0 22px 0}
+}

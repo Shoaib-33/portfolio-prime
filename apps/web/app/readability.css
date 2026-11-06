@@ -1,0 +1,69 @@
+/* Readability pass for the whole site (visitor pages, showcase and member area), loaded last.
+   Same look, easier reading: body text regular instead of light, small capital labels 1-2px larger with less
+   letter-spacing, and secondary grey text with more contrast in both modes. Remove the import in layout.tsx to undo. */
+
+/* ---------- Secondary text contrast ---------- */
+.reg{--text:#CBC6BC;--muted:#A39E94}
+html:not([data-theme=dark]) .reg{--text:#3B3833;--muted:#625E57}
+html:not([data-theme=dark]) .reg :is(.rg-hero,.rg-auth-fig,.rg-nav.is-over:not(.is-open)){--text:#CBC6BC;--muted:#A39E94}
+html{--x-text:#3B3833;--x-muted:#625E57}
+html[data-theme=dark]{--x-text:#CBC6BC;--x-muted:#A39E94}
+
+/* ---------- Body text: regular weight, a touch larger ---------- */
+.reg{font-weight:400;font-size:16.5px}
+.reg p{font-weight:400}
+body{font-weight:400}
+.rg-sub,.rg-hero-lead,.rg-show-lead{font-size:17px}
+.rg-pv-n{font-size:14px}
+
+/* ---------- Small capital labels: larger, less spaced ---------- */
+/* Visitor pages */
+.rg-eyebrow{font-size:12.5px;letter-spacing:.18em}
+.rg-index a,.rg-nav-login{font-size:12px;letter-spacing:.14em}
+.rg-btn{font-size:13px;letter-spacing:.14em}
+.rg-btn-s{font-size:12px}
+.rg-demo{font-size:11.5px;letter-spacing:.12em}
+.reg .lang-toggle button{font-size:12px;letter-spacing:.12em}
+.rg-hero-eyebrow{font-size:13px;letter-spacing:.2em}
+.rg-hero-meta li{font-size:13px;letter-spacing:.16em}
+.rg-hero-side,.rg-hero-tag{font-size:11.5px;letter-spacing:.2em}
+.rg-hero-count{font-size:13px;letter-spacing:.16em}
+.rg-kpis>div>span,.rg-show-stats li>span{font-size:12px;letter-spacing:.16em}
+.rg-tag{font-size:11.5px;letter-spacing:.12em}
+.rg-chips button{font-size:12.5px;letter-spacing:.12em}
+.rg-chips button small{font-size:12px}
+.rg-th{font-size:12px;letter-spacing:.14em}
+.rg-deal-foot{font-size:12px;letter-spacing:.1em}
+.rg-step-k{font-size:12px;letter-spacing:.16em}
+.rg-num{font-size:12.5px;letter-spacing:.18em}
+.rg-foot nav h3{font-size:12px;letter-spacing:.16em}
+.rg-foot-legal{font-size:12px;letter-spacing:.1em}
+.rg-cities li{font-size:20px}
+.reg .rg-form label,.reg .rg-auth-form label{font-size:12px;letter-spacing:.14em}
+.reg .rg-form .interest legend{font-size:12px;letter-spacing:.14em}
+.reg .rg-form .interest span{font-size:12.5px;letter-spacing:.12em}
+.reg .rg-form .check-label{font-size:14.5px;font-weight:400}
+.reg .rg-form .btn,.reg .rg-auth-form .btn.navy{font-size:13.5px;letter-spacing:.14em}
+.rg-auth-form .demo-logins .eyebrow{font-size:12px;letter-spacing:.14em}
+.rg-auth-form .demo-logins .btn small{font-size:13.5px}
+/* Showcase preview cards */
+.rg-pv-h span{font-size:12px;letter-spacing:.16em}
+.rg-pv-h small,.rg-pv-weeks,.rg-pv-axis{font-size:11px;letter-spacing:.1em}
+.rg-pv-pill{font-size:11px;letter-spacing:.1em}
+.rg-pv-av{font-size:10.5px}
+.rg-pv-track span{font-size:11px;letter-spacing:.08em}
+.rg-pv-score span{font-size:14px}
+
+/* Member area (admin, account, listings ...) */
+.eyebrow{font-size:12px!important;letter-spacing:.18em!important}
+#site-header .demo-strip{font-size:11.5px;letter-spacing:.12em}
+.btn{font-size:12.5px;letter-spacing:.14em}
+.pill,.badge,.tag,.property-tag{font-size:11.5px;letter-spacing:.1em}
+th{font-size:11.5px;letter-spacing:.14em}
+label{font-weight:400}
+
+/* Phones: keep the slightly larger labels from crowding */
+@media (max-width:640px){
+  .rg-hero-meta li{font-size:11.5px;letter-spacing:.12em}
+  .rg-btn{letter-spacing:.12em}
+}

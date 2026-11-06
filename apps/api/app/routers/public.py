@@ -7,7 +7,9 @@ from .. import db
 from ..db import T, select, func, and_
 from ..common import (audit, bad, draft_email, forbidden, get_config, json_body, log_rule, not_found, parse, require_feature, require_user,
                       serialize_listing, viewer_of, eur_nl)
-from ..domain import bag_lookup, can_details, cfg, figures, finance, max_price, off_market_state, price_band
+import math
+from datetime import datetime, timezone
+from ..domain import CITY_GEO, bag_lookup, can_details, cfg, figures, finance, max_price, off_market_state, price_band, province_of
 from ..geo import resolve_place
 from ..services.listings import bid_round_info, get_listing, has_nda, list_listings, listing_rows, staff_or_verified, unit_counts, visible_listing
 
@@ -25,7 +27,10 @@ def health():
 @router.get('/config/public')
 def public_config():
     c = get_config()
-    return {'proPriceMonth': cfg(c, 'pro_price_month'), 'proPriceYear': cfg(c, 'pro_price_year'), 'buyerFee': cfg(c, 'buyer_fee')}
+    return {'proPriceMonth': cfg(c, 'pro_price_month'), 'proPriceYear': cfg(c, 'pro_price_year'), 'buyerFee': cfg(c, 'buyer_fee'),
+            # Used by the public FAQ, so its answers follow the configured rates
+            'transferTaxResidential': cfg(c, 'transfer_tax_residential_investor'), 'transferTaxOwnHome': cfg(c, 'transfer_tax_own_home'), 'transferTaxCommercial': cfg(c, 'transfer_tax_commercial'),
+            'otherAcquisitionCosts': cfg(c, 'other_acquisition_costs'), 'sourceOfFundsThreshold': cfg(c, 'source_of_funds_threshold')}
 
 
 @router.get('/stats')
@@ -45,7 +50,45 @@ def listings(request: Request):
 @router.get('/listings/sold')
 def sold():
     rs = listing_rows(T.listings.c.status == 'sold'); counts = unit_counts([p['id'] for _, p in rs])
-    return [{'city': p['city'], 'propertyType': p['property_type'], 'units': counts.get(p['id'], 1), 'priceBand': price_band(l['asking_price']), 'dealType': l['deal_type'], 'soldAt': l['published_at'], 'daysToOffer': l['demand']} for l, p in rs]
+    return [{'city': p['city'], 'propertyType': p['property_type'], 'units': counts.get(p['id'], 1), 'priceBand': price_band(l['asking_price']), 'dealType': l['deal_type'], 'soldAt': l['published_at'], 'daysToOffer': l['demand'],
+             **({'lat': CITY_GEO[p['city']]['lat'], 'lng': CITY_GEO[p['city']]['lng']} if p['city'] in CITY_GEO else {})} for l, p in rs]  # city centre only, never the address
+
+
+# ---------- Visitor teasers: the offering is private, so only anonymised facts leave the server ----------
+LIVE_STATUSES = ['available', 'coming_soon', 'under_offer']
+CODENAMES = ['Linde', 'Eik', 'Beuk', 'Iep', 'Wilg', 'Els', 'Berk', 'Hazelaar', 'Esdoorn', 'Kastanje', 'Lijsterbes', 'Meidoorn', 'Vlier', 'Taxus', 'Hulst', 'Plataan']
+TICKETS = {'lt2': (0, 2e6), '2-10': (2e6, 1e7), '10-50': (1e7, 5e7), '50plus': (5e7, 1e13)}
+
+
+def _codename(listing_id: str) -> str:
+    return 'Project ' + CODENAMES[sum(map(ord, str(listing_id))) % len(CODENAMES)]
+
+
+def _live() -> list[tuple[dict, dict]]:
+    return listing_rows(T.listings.c.status.in_(LIVE_STATUSES))
+
+
+@router.get('/offering/teasers')
+def offering_teasers():
+    """Locked teaser cards for visitors: codename, city, type, units, price band and yield band. No name, address, photo or exact price."""
+    rs = sorted(_live(), key=lambda r: (not r[0]['featured'], -(r[0]['published_at'].timestamp() if r[0]['published_at'] else 0)))
+    counts = unit_counts([p['id'] for _, p in rs]); out = []
+    for l, p in rs[:4]:
+        y = (l['gross_rent_annual'] / l['asking_price'] * 100) if l['gross_rent_annual'] and l['asking_price'] and not l['price_on_request'] else None
+        lo = math.floor(y * 2) / 2 if y else None
+        out.append({'codename': _codename(l['id']), 'city': p['city'], 'province': province_of(p['city']), 'propertyType': p['property_type'], 'category': p['category'],
+                    'units': counts.get(p['id'], 1), 'priceBand': price_band(l['asking_price'], l['price_on_request']), 'yieldBand': f'{lo:.1f}–{lo + .5:.1f}%' if lo else None,
+                    'dealType': l['deal_type'], 'status': l['status'], 'isNew': bool(l['published_at'] and (datetime.now(timezone.utc) - l['published_at']).days < 14)})
+    return {'items': out, 'total': len(rs)}
+
+
+@router.get('/offering/match')
+def offering_match(region: str = 'any', ticket: str = 'any', type: str = 'any'):
+    """How many live properties fit a mandate (region = province, ticket band, category). Returns counts only."""
+    rs = _live(); lo, hi = TICKETS.get(ticket, (0, 1e13))
+    n = sum(1 for l, p in rs if (region == 'any' or province_of(p['city']) == region) and (type == 'any' or p['category'] == type)
+            and (ticket == 'any' or (not l['price_on_request'] and lo <= l['asking_price'] < hi)))
+    return {'count': n, 'total': len(rs), 'regions': sorted({province_of(p['city']) for _, p in rs if province_of(p['city'])})}
 
 
 @router.get('/listings/map')
