@@ -3,6 +3,7 @@
    Every effect is skipped for people who prefer reduced motion; content never depends on it. */
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { pic, picAvif } from '@/lib/format';
 import { Split } from './split';
 
 const reduced = () => typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -57,7 +58,7 @@ export function RgRecord({ deals, types, labels }: { deals: Deal[]; types: [stri
   return <div className="rg-record">
     <div className="rg-chips" role="group" aria-label={labels.filter}>{[['all', labels.all] as [string, string], ...types].map(([k, l]) => <button key={k} type="button" className={f === k ? 'on' : ''} aria-pressed={f === k} onClick={() => setF(k)}>{l}<small>{k === 'all' ? deals.length : deals.filter(d => d.deal === k).length}</small></button>)}</div>
     <div className="rg-deals" key={f}>{rows.slice(0, 4).map((d, i) => <article key={d.city + i} className="rg-card rg-deal" style={{ ['--i' as any]: i }}>
-      <div className="rg-media"><img src={d.img} alt="" loading="lazy" /><span className="rg-tag">{d.dealLabel}</span></div>
+      <div className="rg-media"><img {...pic(d.img, '(max-width: 640px) 100vw, 25vw')} alt="" loading="lazy" /><span className="rg-tag">{d.dealLabel}</span></div>
       <div className="rg-card-body"><h3>{d.city}</h3><p>{d.type} · {d.units} {labels.units}</p><div className="rg-deal-foot"><b>{d.band}</b><span>{d.days} {labels.daysShort}</span></div></div>
     </article>)}</div>
     <div className="rg-table" role="table" aria-label={labels.filter}>
@@ -98,13 +99,15 @@ export function RgHero({ slides, labels }: { slides: Slide[]; labels: Record<str
   const [i, setI] = useState(0); const [paused, setPaused] = useState(false); const n = slides.length; const DUR = 7000;
   const go = (k: number) => setI(((k % n) + n) % n);
   useEffect(() => { if (paused || reduced() || n < 2) return; const id = setTimeout(() => go(i + 1), DUR); return () => clearTimeout(id); }, [i, paused, n]);
-  const touch = useRef(0);
+  const touch = useRef(0); const [warm, setWarm] = useState(false);
+  useEffect(() => { const c = (navigator as any).connection; if (c?.saveData || /2g/.test(c?.effectiveType || '')) return; const id = setTimeout(() => { const go = () => setWarm(true); 'requestIdleCallback' in window ? (window as any).requestIdleCallback(go, { timeout: 2000 }) : go(); }, 4000); return () => clearTimeout(id); }, []);
+  const keep = (k: number) => k === i || (warm && k === (i + 1) % n) || (i > 0 && k === i - 1);
   const s = slides[i]; const pad = (v: number) => String(v).padStart(2, '0');
   return <section className="rg-hero" aria-roledescription="carousel" aria-label={labels.region}
     onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
     onKeyDown={e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); }}
     onTouchStart={e => { touch.current = e.touches[0].clientX; }} onTouchEnd={e => { const dx = e.changedTouches[0].clientX - touch.current; if (Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1)); }}>
-    <div className="rg-hero-media" aria-hidden="true">{slides.map((x, k) => <img key={k} src={x.img} alt="" className={k === i ? 'on' : ''} fetchPriority={k === 0 ? 'high' : 'low'} loading={k === 0 ? 'eager' : 'lazy'} />)}</div>
+    <div className="rg-hero-media" aria-hidden="true">{slides.map((x, k) => keep(k) && <picture key={k}><source media="(max-width: 640px)" type="image/webp" srcSet={picAvif(x.img).replace('.avif', '-sm.webp')} /><source type="image/avif" srcSet={picAvif(x.img)} /><img {...pic(x.img, '100vw')} alt="" className={k === i ? 'on' : ''} fetchPriority={k === 0 ? 'high' : 'low'} /></picture>)}</div>
     <p className="rg-hero-side" aria-hidden="true">{labels.side.split(' · ').map(w => <span key={w}>{w}</span>)}</p>
     <div className="rg-hero-fx">
     <div className="rg-hero-in" key={i} aria-live="polite">

@@ -1,29 +1,39 @@
 'use client';
 /* Cinematic motion for the visitor pages (home, log in), built on GSAP + ScrollTrigger and Lenis:
-   - first-visit intro (name rises, champagne line draws, curtain lifts),
    - smooth inertia scrolling, with anchor links and the phone menu handled,
    - headlines rising word by word ([data-split]), photos unmasking with a slow zoom ([data-reveal]),
    - a pinned "How access works" chapter where the steps light up in turn ([data-steps], wide screens),
    - the hero drifting away on scroll and cards that tilt in 3D.
+   The libraries load after the page has appeared, so they never delay the first screen (the intro is pure CSS, see cinema.css).
    Everything is skipped for people who prefer reduced motion; the page is complete without it. */
 import { useEffect } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Lenis from 'lenis';
 
 const TILT = '.rg-teaser, .rg-pillar, .rg-deal';
 
-export function RgCinema({ home }: { home: boolean }) {
+export function RgCinema() {
   useEffect(() => {
-    const html = document.documentElement; const root = document.querySelector<HTMLElement>('.reg');
-    if (!root || matchMedia('(prefers-reduced-motion: reduce)').matches) { html.classList.remove('rg-intro-on'); return; }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let dead = false; let dispose: (() => void) | undefined;
+    const run = async () => {
+      const [g, st, l] = await Promise.all([import('gsap'), import('gsap/ScrollTrigger'), import('lenis')]);
+      if (!dead) dispose = setup(g.default, st.ScrollTrigger, l.default);
+    };
+    const idle = (window as any).requestIdleCallback as undefined | ((f: () => void, o: object) => number);
+    idle ? idle(run, { timeout: 700 }) : setTimeout(run, 200);
+    return () => { dead = true; dispose?.(); };
+  }, []);
+  return null;
+}
+
+function setup(gsap: any, ScrollTrigger: any, Lenis: any): (() => void) | undefined {
+    const html = document.documentElement; const root = document.querySelector<HTMLElement>('.reg'); if (!root) return;
     gsap.registerPlugin(ScrollTrigger);
     html.classList.add('rg-cine');
     const cleanups: (() => void)[] = [];
     const ctx = gsap.context(() => {}, root);
 
     /* ---------- Smooth scrolling ---------- */
-    const lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.95 });
+    const lenis = new Lenis({ lerp: 0.17, wheelMultiplier: 1 });
     (window as any).__lenis = lenis;
     lenis.on('scroll', ScrollTrigger.update);
     const tick = (t: number) => lenis.raf(t * 1000);
@@ -34,38 +44,25 @@ export function RgCinema({ home }: { home: boolean }) {
       const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href*="#"]'); if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
       const url = new URL(a.href, location.href); if (url.pathname !== location.pathname || !url.hash) return;
       const target = document.querySelector(url.hash === '#main' ? 'body' : url.hash); if (!target) return;
-      e.preventDefault(); lenis.scrollTo(target as HTMLElement, { duration: 1.5 }); history.replaceState(null, '', url.hash);
+      e.preventDefault(); lenis.scrollTo(target as HTMLElement, { duration: 1.1 }); history.replaceState(null, '', url.hash);
     };
     document.addEventListener('click', onClick); cleanups.push(() => document.removeEventListener('click', onClick));
     // Phone menu open: hold the page still
-    const mo = new MutationObserver(() => html.classList.contains('rg-menu-open') ? lenis.stop() : lenis.start());
+    // The CSS intro is playing: hold scrolling until it lifts
+    if (html.classList.contains('rg-intro-on')) { lenis.stop(); const id = setTimeout(() => { lenis.start(); ScrollTrigger.refresh(); }, 1800); cleanups.push(() => clearTimeout(id)); }
+    const mo = new MutationObserver(() => { if (html.classList.contains('rg-intro-on')) return; html.classList.contains('rg-menu-open') ? lenis.stop() : lenis.start(); });
     mo.observe(html, { attributes: true, attributeFilter: ['class'] }); cleanups.push(() => mo.disconnect());
 
     ctx.add(() => {
-      /* ---------- Intro (first visit per session, homepage) ---------- */
-      const intro = document.querySelector<HTMLElement>('.rg-intro');
-      if (home && intro && html.classList.contains('rg-intro-on')) {
-        lenis.stop();
-        const tl = gsap.timeline({ defaults: { ease: 'expo.out' }, onComplete: () => { html.classList.remove('rg-intro-on'); lenis.start(); ScrollTrigger.refresh(); } });
-        // Start states come from CSS (hidden before this script runs, so nothing flashes)
-        tl.to(intro.querySelectorAll('.rg-intro-ch'), { y: 0, yPercent: 0, duration: 1.1, stagger: 0.035 })
-          .to(intro.querySelector('.rg-intro-line'), { scaleX: 1, duration: 1.1, ease: 'expo.inOut' }, 0.35)
-          .to(intro.querySelector('.rg-intro-meta'), { autoAlpha: 1, y: 0, duration: 0.8 }, 0.8)
-          .to(intro.querySelector('.rg-intro-in'), { yPercent: -30, autoAlpha: 0, duration: 0.9, ease: 'expo.in' }, 1.75)
-          .to(intro, { yPercent: -100, duration: 1.15, ease: 'expo.inOut' }, 1.95)
-          .from('.rg-hero-media', { scale: 1.22, duration: 2.2, ease: 'expo.out', clearProps: 'transform' }, 2.15)
-          .add(() => html.classList.remove('rg-intro-on'), 2.3);
-      } else html.classList.remove('rg-intro-on');
-
       /* ---------- Headlines rise word by word ---------- */
-      gsap.utils.toArray<HTMLElement>('[data-split]').forEach(h => {
+      (gsap.utils.toArray('[data-split]') as HTMLElement[]).forEach(h => {
         const words = h.querySelectorAll('.rg-sw > span'); if (!words.length) return;
         gsap.set(words, { yPercent: 115 });
         ScrollTrigger.create({ trigger: h, start: 'top 88%', once: true, onEnter: () => gsap.to(words, { yPercent: 0, duration: 1.25, ease: 'expo.out', stagger: 0.055 }) });
       });
 
       /* ---------- Photos unmask with a slow zoom ---------- */
-      gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach(box => {
+      (gsap.utils.toArray('[data-reveal]') as HTMLElement[]).forEach(box => {
         const img = box.querySelector('img');
         gsap.fromTo(box, { clipPath: 'inset(100% 0% 0% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.6, ease: 'expo.inOut', scrollTrigger: { trigger: box, start: 'top 85%', once: true } });
         if (img) gsap.fromTo(img, { scale: 1.3 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: box, start: 'top bottom', end: 'bottom top', scrub: true } });
@@ -86,7 +83,7 @@ export function RgCinema({ home }: { home: boolean }) {
         mm.add('(min-width: 1081px) and (min-height: 640px)', () => {
             sec.classList.add('is-pinned');
             const st = ScrollTrigger.create({ trigger: sec, start: 'top top', end: 'bottom bottom', scrub: true,
-              onUpdate: s => { const p = s.progress; steps.style.setProperty('--p', p.toFixed(3)); const n = Math.min(items.length - 1, Math.floor(p * items.length * 0.999)); items.forEach((li, k) => li.classList.toggle('on', k <= n)); } });
+              onUpdate: (s: any) => { const p = s.progress; steps.style.setProperty('--p', p.toFixed(3)); const n = Math.min(items.length - 1, Math.floor(p * items.length * 0.999)); items.forEach((li, k) => li.classList.toggle('on', k <= n)); } });
             return () => { st.kill(); sec.classList.remove('is-pinned'); steps.style.removeProperty('--p'); items.forEach(li => li.classList.remove('on')); };
         });
       }
@@ -115,7 +112,5 @@ export function RgCinema({ home }: { home: boolean }) {
     let rt = 0; const ro = new ResizeObserver(() => { clearTimeout(rt); rt = window.setTimeout(() => ScrollTrigger.refresh(), 200); });
     ro.observe(document.body); cleanups.push(() => { ro.disconnect(); clearTimeout(rt); });
 
-    return () => { ctx.revert(); ScrollTrigger.getAll().forEach(s => s.kill()); cleanups.forEach(f => f()); html.classList.remove('rg-cine', 'rg-intro-on'); };
-  }, [home]);
-  return null;
+    return () => { ctx.revert(); ScrollTrigger.getAll().forEach((s: any) => s.kill()); cleanups.forEach(f => f()); html.classList.remove('rg-cine'); };
 }

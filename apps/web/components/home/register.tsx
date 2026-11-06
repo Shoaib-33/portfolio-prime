@@ -4,7 +4,7 @@
 import type { ReactElement } from 'react';
 import { RequestAccessForm } from '@/components/access';
 import { tr } from '@/lib/i18n';
-import { DEAL } from '@/lib/format';
+import { DEAL, pic, picBlur } from '@/lib/format';
 import { RgCount, RgRecord, RgHero } from './register-client';
 import { RegisterShell, Arrow } from './shell';
 import { RgMandate } from './offering';
@@ -99,7 +99,7 @@ export async function RegisterHome({ stats, sold, teasers, cfg, lang, demo }: { 
         tickets={[['lt2', t('Up to €2m')], ['2-10', '€2–10m'], ['10-50', '€10–50m'], ['50plus', '€50m+']]}
         types={[['buildings', t('Apartment buildings')], ['portfolios', t('Residential portfolios')], ['homes', t('Prime homes')]]} regionLabel={PROVINCE_NL} />
       {teasers.items.length > 0 && <ul className="rg-teasers">{teasers.items.map((x, i) => <li key={x.codename + i} className="rg-teaser" data-rv>
-        <div className="rg-teaser-img" aria-hidden="true"><img src={SHOTS[(i + 2) % SHOTS.length]} alt="" loading="lazy" /><span className="rg-teaser-lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg></span>
+        <div className="rg-teaser-img" aria-hidden="true"><img src={picBlur(SHOTS[(i + 2) % SHOTS.length])} alt="" loading="lazy" /><span className="rg-teaser-lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg></span>
           <span className="rg-tag">{x.status === 'under_offer' ? t('Under offer') : x.isNew ? t('New') : t(DEAL[x.dealType] || x.dealType)}</span></div>
         <div className="rg-teaser-body">
           <p className="rg-teaser-meta">{x.city}{x.province ? ` · ${x.province}` : ''}</p>
@@ -116,7 +116,7 @@ export async function RegisterHome({ stats, sold, teasers, cfg, lang, demo }: { 
     <section className="rg-sec" id="approach" data-sec>
       <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('What we do')}</p><h2 data-split><Split text={t('Three disciplines, one point of contact.')} /></h2></div><p className="rg-sub" data-rv>{t('From acquisition to transfer, every step is handled in-house by one team.')}</p></header>
       <div className="rg-pillars">{PILLARS.map(([h, p, img], i) => <article key={h} className="rg-card rg-pillar" data-rv>
-        <div className="rg-media" data-reveal><img src={img} alt="" loading="lazy" /></div>
+        <div className="rg-media" data-reveal><img {...pic(img)} alt="" loading="lazy" /></div>
         <div className="rg-card-body"><span className="rg-num">0{i + 1}</span><h3>{t(h)}</h3><p>{t(p)}</p></div>
       </article>)}</div>
     </section>
@@ -144,7 +144,7 @@ export async function RegisterHome({ stats, sold, teasers, cfg, lang, demo }: { 
 
     {/* ---------- Sellers ---------- */}
     <section className="rg-sell" aria-labelledby="rg-sell-t">
-      <div className="rg-sell-media" aria-hidden="true" data-reveal><img src="/img/r1.jpg" alt="" loading="lazy" /></div>
+      <div className="rg-sell-media" aria-hidden="true" data-reveal><img {...pic('/img/r1.jpg', '(max-width: 900px) 100vw, 55vw')} alt="" loading="lazy" /></div>
       <div className="rg-sell-body" data-rv>
         <p className="rg-eyebrow">{t('OWNERS AND FUNDS')}</p>
         <h2 id="rg-sell-t" data-split><Split text={t('Selling a portfolio?')} /></h2>

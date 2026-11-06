@@ -18,7 +18,7 @@ html.rg-motion .rg-hero-title .rg-sw>span{animation:rg-word 1.25s cubic-bezier(.
 /* ---------- Hero ---------- */
 .rg-hero-fx{align-self:center;min-width:0}
 
-/* ---------- Intro curtain (first homepage visit per session) ---------- */
+/* ---------- Intro curtain (first homepage visit per session). Pure CSS, so it plays before any JavaScript has loaded ---------- */
 .rg-intro{display:none}
 html.rg-intro-on{overflow:hidden}
 html.rg-intro-on .rg-intro{display:grid;place-items:center;position:fixed;inset:0;z-index:300;background:#16110D;color:#F2EBDF;will-change:transform}
@@ -31,6 +31,15 @@ html.rg-intro-on .rg-hero,html.rg-intro-on .rg-hero *{animation-play-state:pause
 .rg-intro-line{display:block;width:min(300px,50vw);height:1px;background:#D4B98A;transform:scaleX(0);transform-origin:0 50%}
 .rg-intro-meta{margin:0;font:400 11.5px/1 var(--sans);letter-spacing:.3em;text-transform:uppercase;color:#A99D8C!important;opacity:0;transform:translateY(10px)}
 @media (max-width:640px){.rg-intro-name{letter-spacing:.18em;font-size:22px}}
+html.rg-intro-on .rg-intro{animation:rg-curtain .7s cubic-bezier(.76,0,.24,1) 1s both}
+html.rg-intro-on .rg-intro-in{animation:rg-intro-out .4s ease-in .95s both}
+html.rg-intro-on .rg-intro-ch{animation:rg-word .7s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--c) * 15ms)}
+html.rg-intro-on .rg-intro-line{animation:rg-intro-line .6s cubic-bezier(.76,0,.24,1) .15s both}
+html.rg-intro-on .rg-intro-meta{animation:rg-intro-meta .5s ease-out .4s both}
+@keyframes rg-curtain{to{transform:translateY(-100%)}}
+@keyframes rg-intro-out{to{opacity:0;transform:translateY(-30%)}}
+@keyframes rg-intro-line{to{transform:scaleX(1)}}
+@keyframes rg-intro-meta{to{opacity:1;transform:none}}
 
 /* ---------- "How access works": pinned chapter on wide screens ---------- */
 @media (min-width:1081px) and (min-height:640px){
@@ -51,3 +60,12 @@ html.rg-cine :is(.rg-teaser,.rg-pillar,.rg-deal).is-tilt::after{opacity:1}
 html:not([data-theme=dark]).rg-cine :is(.rg-teaser,.rg-pillar,.rg-deal)::after{background:radial-gradient(520px circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.45),transparent 45%)}
 
 @media (prefers-reduced-motion:reduce){.rg-intro{display:none!important}}
+
+/* ---------- Performance: fewer effects the browser must recompute on every frame ---------- */
+.rg-tag,.rg-pv,.rg-teaser-lock{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.rg-show-glow::before{filter:none}
+.rg-show-glow i{animation-name:rg-beams-soft;will-change:opacity}
+@keyframes rg-beams-soft{from{opacity:.45}to{opacity:.8}}
+.rg-pv-h span i{animation:none}
+/* Visitor pages have their own entrance: the older whole-page fade would wash out the intro and delay the first screen */
+#main:has(.reg).page-in{animation:none}

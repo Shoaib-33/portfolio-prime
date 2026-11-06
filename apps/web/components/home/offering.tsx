@@ -27,7 +27,7 @@ export function RgMandate({ labels, tickets, types, regionLabel }: { labels: Rec
     const parts = [region !== 'any' ? (regionLabel[region] || region) : '', ticket !== 'any' ? tickets.find(x => x[0] === ticket)?.[1] : '', type !== 'any' ? types.find(x => x[0] === type)?.[1] : ''].filter(Boolean);
     if (msg && parts.length && !msg.value) msg.value = `${labels.note}: ${parts.join(' · ')}`;
     const req = document.getElementById('request'); const lenis = (window as any).__lenis;
-    if (req) lenis ? lenis.scrollTo(req, { duration: 1.5 }) : req.scrollIntoView({ behavior: 'smooth' });
+    if (req) lenis ? lenis.scrollTo(req, { duration: 1.1 }) : req.scrollIntoView({ behavior: 'smooth' });
     setTimeout(() => form.querySelector<HTMLInputElement>('input[name=name]')?.focus({ preventScroll: true }), 700);
   };
 

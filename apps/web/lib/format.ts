@@ -14,4 +14,10 @@ export const PROVINCES = ['Drenthe', 'Flevoland', 'Friesland', 'Gelderland', 'Gr
 /** Listing -> map point. The API decides how exact the point is (city centre for visitors). */
 export const toPoint = (l: any) => l.point ? { slug: l.slug, name: l.name, city: l.city, district: l.district, price: l.askingPrice ? money(l.askingPrice) : l.priceDisplay || 'Price on request', bar: l.bar, image: l.image, lat: l.point.lat, lng: l.point.lng, approx: !!l.point.approx } : null;
 /** Listing image: a CRM photo URL (https) or one of the bundled reference images. */
-export const imgSrc = (image?: string | null) => !image ? '/img/p1.jpg' : /^https:\/\//.test(image) ? image : `/img/${image}.jpg`;
+export const imgSrc = (image?: string | null) => !image ? '/img/opt/p1.webp' : /^https:\/\//.test(image) ? image : `/img/opt/${image}.webp`;
+/** Responsive <img> props for a local photo: compressed WebP, with a small version for phones and cards (made by scripts/build-images.py). */
+export const pic = (src: string, sizes = '(max-width: 640px) 100vw, 33vw') => { const m = /^\/img\/(\w+)\.jpg$/.exec(src); if (!m) return { src }; const n = m[1]; return { src: `/img/opt/${n}.webp`, srcSet: `/img/opt/${n}-sm.webp 640w, /img/opt/${n}.webp ${n === 'hero' ? 1680 : 1100}w`, sizes }; };
+/** AVIF source for a local photo (smaller than WebP; used with <picture> in the hero). */
+export const picAvif = (src: string) => src.replace(/^\/img\/(\w+)\.jpg$/, '/img/opt/$1.avif');
+/** Tiny pre-blurred version of a photo (locked teaser cards): no live blur for the browser to compute. */
+export const picBlur = (src: string) => src.replace(/^\/img\/(\w+)\.jpg$/, '/img/opt/$1-blur.webp');

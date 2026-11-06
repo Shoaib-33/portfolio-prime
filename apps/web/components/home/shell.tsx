@@ -22,12 +22,12 @@ export function RegisterShell({ lang, demo, home = false, current, children }: {
   const index: [string, string][] = [['approach', t('What we do')], ['access', t('How access works')], ['platform', t('Platform')], ['record', t('Track record')]];
   // Before first paint: mark that motion is allowed, so reveal targets start hidden without a flash.
   // Before first paint: allow motion, and on the first homepage visit of a session, show the intro curtain (no flash of the page underneath).
-  const boot = `(function(){var h=document.documentElement;if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;h.classList.add('rg-motion');${home ? "try{if(!sessionStorage.getItem('rgCine')){h.classList.add('rg-intro-on');sessionStorage.setItem('rgCine','1');setTimeout(function(){h.classList.remove('rg-intro-on')},6000)}}catch(e){}" : ''}})();`;
+  const boot = `(function(){var h=document.documentElement;if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;h.classList.add('rg-motion');${home ? "try{if(!sessionStorage.getItem('rgCine')){h.classList.add('rg-intro-on');sessionStorage.setItem('rgCine','1');setTimeout(function(){h.classList.remove('rg-intro-on')},1750)}}catch(e){}" : ''}})();`;
   const brand = 'MAASLAND & PARTNERS';
   return <div className={`reg ${display.variable} ${sans.variable}${home ? ' reg-home' : ''}`}>
     <script dangerouslySetInnerHTML={{ __html: boot }} />
     {home && <div className="rg-intro" aria-hidden="true"><div className="rg-intro-in">
-      <p className="rg-intro-name">{brand.split('').map((ch, i) => <span key={i} className="rg-intro-mask"><span className={`rg-intro-ch${ch === '&' ? ' amp' : ''}`}>{ch === ' ' ? ' ' : ch}</span></span>)}</p>
+      <p className="rg-intro-name">{brand.split('').map((ch, i) => <span key={i} className="rg-intro-mask"><span className={`rg-intro-ch${ch === '&' ? ' amp' : ''}`} style={{ ['--c' as any]: i }}>{ch === ' ' ? ' ' : ch}</span></span>)}</p>
       <span className="rg-intro-line" />
       <p className="rg-intro-meta">{t('Private offering · By invitation')}</p>
     </div></div>}
@@ -44,6 +44,6 @@ export function RegisterShell({ lang, demo, home = false, current, children }: {
       {demo && <p className="rg-foot-demo">{t('Demo build. All listings, investors and figures are fictional; photographs are reference imagery. KYC, payments, e-signing and emails are simulated adapters. Listings arrive from the company CRM through the integration API.')}</p>}
     </footer>
     <RgMotion />
-    <RgCinema home={home} />
+    <RgCinema />
   </div>;
 }

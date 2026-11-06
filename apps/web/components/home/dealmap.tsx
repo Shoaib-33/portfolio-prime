@@ -35,7 +35,8 @@ export function RgDealMap({ deals, labels }: { deals: Deal[]; labels: Record<str
       return el;
     };
 
-    (async () => {
+    // The map library is large, so it loads only when a visitor gets close to the map
+    const start = async () => {
       const maplibregl = (await import('maplibre-gl')).default; if (cancelled || !box.current) return;
       const wide = box.current.clientWidth > 560;
       const view = { center: [5.35, 52.15] as [number, number], zoom: wide ? 6.55 : 6.05, pitch: wide ? 52 : 46, bearing: -16 };
@@ -78,7 +79,9 @@ export function RgDealMap({ deals, labels }: { deals: Deal[]; labels: Record<str
         const mo = new MutationObserver(() => { const c = colors(); base(c); map.setPaintProperty('deals-3d', 'fill-extrusion-color', paint(c)); });
         mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); offs.push(() => mo.disconnect());
       });
-    })();
+    };
+    const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { near.disconnect(); start(); } }, { rootMargin: '900px 0px' });
+    near.observe(box.current!); offs.push(() => near.disconnect());
     return () => { cancelled = true; offs.forEach(f => f()); api.current = null; map?.remove(); };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 

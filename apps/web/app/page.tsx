@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { api, getMe, getLang, Me } from '@/lib/api';
+import { api, publicApi, getMe, getLang, Me } from '@/lib/api';
 import { ListingCard } from '@/components/ui';
 import { RegisterHome } from '@/components/home/register';
 import { Icon } from '@/components/access';
@@ -14,8 +14,8 @@ export default async function Home() {
 
 /* ---------- Visitors: the Register homepage (components/home/register.tsx). No listings. ---------- */
 async function PublicHome() {
-  const [stats, sold, teasers, cfg, lang] = await Promise.all([api('/stats'), api('/listings/sold'), api('/offering/teasers'), api('/config/public'), getLang()]);
-  return <RegisterHome stats={stats.data} sold={sold.data || []} teasers={teasers.ok ? teasers.data : { items: [], total: 0 }} cfg={cfg.ok ? cfg.data : {}} lang={lang} demo={process.env.PP_DEMO !== '0'} />;
+  const [stats, sold, teasers, cfg, lang] = await Promise.all([publicApi('/stats'), publicApi('/listings/sold'), publicApi('/offering/teasers'), publicApi('/config/public'), getLang()]);
+  return <RegisterHome stats={stats.data} sold={sold.ok ? sold.data : []} teasers={teasers.ok ? teasers.data : { items: [], total: 0 }} cfg={cfg.ok ? cfg.data : {}} lang={lang} demo={process.env.PP_DEMO !== '0'} />;
 }
 
 /* ---------- Invited people: their selection and their tools ---------- */

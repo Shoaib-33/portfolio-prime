@@ -36,7 +36,7 @@ const retry = tries => tries > 180 ? (console.error('API did not start in time.'
 function startWeb() {
   console.log(`API ready (FastAPI). Starting website on port ${PORT}.`);
   const next = require.resolve('next/dist/bin/next', { paths: [path.join(__dirname, 'apps/web')] });
-  const web = spawn(process.execPath, ['--max-old-space-size=160', next, 'start', '-p', PORT, '-H', '0.0.0.0'], { cwd: path.join(__dirname, 'apps/web'), stdio: 'inherit', env: { ...process.env, API_URL: 'http://127.0.0.1:4000' } });
+  const web = spawn(process.execPath, [`--max-old-space-size=${process.env.WEB_HEAP_MB || 160}`, next, 'start', '-p', PORT, '-H', process.env.WEB_HOST || '0.0.0.0'], { cwd: path.join(__dirname, 'apps/web'), stdio: 'inherit', env: { ...process.env, API_URL: 'http://127.0.0.1:4000' } });
   children.push(web);
   web.on('exit', code => { console.error(`Website exited with code ${code}; stopping.`); stop(code || 1); });
 }
