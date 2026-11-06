@@ -1,0 +1,70 @@
+/* "Espresso & champagne": the brand palette, layered over the base styles (loaded last).
+   Dark: warm espresso, ivory text, champagne accent (dark text on champagne buttons for contrast).
+   Light: warm cream, espresso text, bronze accent (white text on its buttons stays readable).
+   To go back to charcoal and coral: remove the import of this file in app/layout.tsx and re-run scripts/build-dark-theme.py
+   with its previous palette (or restore theme-dark.css from git). */
+
+/* ---------- Visitor pages (.reg) ---------- */
+.reg{
+  --bg:#16110D;--bg-2:#1B1511;--bg-3:#221A15;--surface:#1E1712;
+  --fg:#F2EBDF;--text:#D6CCBD;--muted:#A99D8C;
+  --line:rgba(242,235,223,.12);--line-2:rgba(242,235,223,.22);
+  --accent:#D4B98A;--accent-d:#C0A374;--accent-bg:rgba(212,185,138,.12);--on-accent:#16110D;
+  --nav-bg:rgba(22,17,13,.88);--foot-bg:#100C09;--hover-line:rgba(242,235,223,.45);--placeholder:#7F7568;--error:#E9A08A;
+  --glow:212,185,138
+}
+html:not([data-theme=dark]) .reg{
+  --bg:#F7F2EA;--bg-2:#EFE8DC;--bg-3:#E7DECF;--surface:#FCF9F4;
+  --fg:#2A1E16;--text:#43362B;--muted:#6E6152;
+  --line:rgba(42,30,22,.12);--line-2:rgba(42,30,22,.24);
+  --accent:#8A6A3E;--accent-d:#735732;--accent-bg:rgba(138,106,62,.1);--on-accent:#FFFFFF;
+  --nav-bg:rgba(247,242,234,.92);--foot-bg:#EFE8DC;--hover-line:rgba(42,30,22,.45);--placeholder:#9A8F82;--error:#A6452F;
+  --glow:138,106,62
+}
+/* Areas on photography stay dark in light mode too */
+html:not([data-theme=dark]) .reg :is(.rg-hero,.rg-auth-fig,.rg-nav.is-over:not(.is-open)){
+  --bg:#16110D;--bg-2:#1B1511;--bg-3:#221A15;--surface:#1E1712;--fg:#F2EBDF;--text:#D6CCBD;--muted:#A99D8C;
+  --line:rgba(242,235,223,.12);--line-2:rgba(242,235,223,.22);--accent:#D4B98A;--accent-d:#C0A374;--on-accent:#16110D
+}
+.rg-show{--glow:212,185,138}
+html:not([data-theme=dark]) .rg-show{--glow:138,106,62}
+
+body:has(.reg){background:#16110D}
+html:not([data-theme=dark]) body:has(.reg){background:#F7F2EA}
+.reg ::selection{background:var(--accent);color:var(--on-accent)}
+.rg-demo{background:#0C0907;color:#A99D8C}
+.reg .rg-demo a{color:#F2EBDF}
+.reg .rg-demo a:hover{color:#D4B98A}
+
+/* Photo overlays in warm espresso instead of neutral black */
+.rg-hero-media::after{background:linear-gradient(90deg,rgba(14,10,8,.84) 0%,rgba(14,10,8,.56) 42%,rgba(14,10,8,.16) 75%),linear-gradient(0deg,rgba(14,10,8,.86) 0%,rgba(14,10,8,0) 32%),linear-gradient(180deg,rgba(14,10,8,.6) 0%,rgba(14,10,8,0) 24%)}
+.rg-auth-fig::before{background:linear-gradient(0deg,rgba(14,10,8,.9) 0%,rgba(14,10,8,.3) 55%,rgba(14,10,8,.35) 100%)}
+@media (max-width:640px){.rg-hero-media::after{background:linear-gradient(0deg,rgba(14,10,8,.92) 0%,rgba(14,10,8,.62) 55%,rgba(14,10,8,.5) 100%)}}
+.rg-tag{background:rgba(22,17,13,.74)}
+html:not([data-theme=dark]) .reg .rg-tag:not(.rg-tag-soft){background:rgba(247,242,234,.92);color:#2A1E16}
+
+/* Text on brass */
+.rg-btn-accent,.rg-btn-accent:hover,.rg-menu-foot .rg-btn,.rg-nav-end .rg-btn-primary:hover,.rg-pv-pill.is-acc,
+.reg .rg-form .btn,.reg .rg-auth-form .btn.navy,.rg-tool:hover .rg-ico{color:var(--on-accent)}
+.reg .rg-form .btn:hover,.reg .rg-auth-form .btn.navy:hover{color:var(--on-accent)}
+.rg-teaser:hover .rg-teaser-lock{color:var(--on-accent)}
+
+/* Map pins and tooltip */
+.rg-dm-pin{box-shadow:0 0 0 4px rgba(var(--glow),.25),0 4px 14px rgba(0,0,0,.35)}
+.rg-dm-pin::after{border-color:rgba(var(--glow),.6)}
+.rg-dealmap{--glow:212,185,138}
+html:not([data-theme=dark]) .rg-dealmap{--glow:138,106,62}
+.rg-dm-m.on .rg-dm-pin{box-shadow:0 0 0 6px rgba(var(--glow),.45),0 6px 18px rgba(0,0,0,.4)}
+.rg-dm-tip{background:#1B1511;border-color:rgba(242,235,223,.22);color:#D6CCBD}
+.rg-dm-tip b{color:#F2EBDF}
+
+/* ---------- Member area (admin, account, listings ...) ---------- */
+html{--x-bg:#F7F2EA;--x-surface:#FCF9F4;--x-input:#FFFFFF;--x-fg:#2A1E16;--x-text:#43362B;--x-muted:#6E6152;--x-placeholder:#9A8F82;--x-accent:#8A6A3E;--x-accent-d:#735732;--x-on-accent:#FFFFFF;--x-line:rgba(42,30,22,.12);--x-line-2:rgba(42,30,22,.24);--x-hover:rgba(42,30,22,.03);--x-header:rgba(247,242,234,.92)}
+html[data-theme=dark]{--x-bg:#16110D;--x-surface:#1E1712;--x-input:#191410;--x-fg:#F2EBDF;--x-text:#D6CCBD;--x-muted:#A99D8C;--x-placeholder:#7F7568;--x-accent:#D4B98A;--x-accent-d:#C0A374;--x-on-accent:#16110D;--x-line:rgba(242,235,223,.12);--x-line-2:rgba(242,235,223,.22);--x-hover:rgba(242,235,223,.03);--x-header:rgba(22,17,13,.9)}
+/* The original light member stylesheets: their own tokens onto espresso and champagne */
+html:not([data-theme=dark]){--ink:#2A1E16;--navy:#3A2A1F;--paper:#F7F2EA;--cream:#EFE8DC;--accent:#8A6A3E;--muted:#6E6152;--card:#FCF9F4;--soft:#EFE8DC;--brass-soft:#F3EADB;--accent-text:#735732}
+html:not([data-theme=dark]) body{background:#F7F2EA}
+#site-header .demo-strip{background:#0C0907;color:#A99D8C}
+#site-header .demo-strip a{color:#F2EBDF}
+.btn.navy,.btn.primary,.btn.navy:hover,.btn.primary:hover{color:var(--x-on-accent)}
+#site-header .nav-count,#site-header .dot{color:var(--x-on-accent)}

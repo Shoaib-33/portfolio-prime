@@ -11,6 +11,7 @@ import './showcase.css';
 import './offering.css';
 import './faq.css';
 import './readability.css';
+import './theme-brass.css';
 import { Cormorant_Garamond, Jost } from 'next/font/google';
 import { Motion } from '@/components/motion';
 import { headers } from 'next/headers';
