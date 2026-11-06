@@ -3,6 +3,7 @@
    Also emits schema.org FAQPage data for search engines. Styles: app/faq.css. */
 import { tr } from '@/lib/i18n';
 import { Arrow } from './shell';
+import { Split } from './split';
 
 export function RegisterFaq({ cfg, stats, lang }: { cfg: any; stats: any; lang: string }) {
   const t = tr(lang); const nl = lang === 'nl';
@@ -39,7 +40,7 @@ export function RegisterFaq({ cfg, stats, lang }: { cfg: any; stats: any; lang: 
   return <section className="rg-sec rg-faq" id="faq" data-sec aria-labelledby="rg-faq-t">
     <div className="rg-faq-side">
       <p className="rg-eyebrow" data-rv>{t('Questions')}</p>
-      <h2 id="rg-faq-t" data-rv>{t('Frequently asked.')}</h2>
+      <h2 id="rg-faq-t" data-split><Split text={t('Frequently asked.')} /></h2>
       <p className="rg-sub" data-rv>{t('The short answers. A partner will happily go through the details with you.')}</p>
       <a className="rg-btn rg-btn-line" href="#request" data-rv>{t('Ask a partner')}<Arrow /></a>
     </div>

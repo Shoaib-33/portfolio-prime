@@ -3,6 +3,7 @@
    Every effect is skipped for people who prefer reduced motion; content never depends on it. */
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Split } from './split';
 
 const reduced = () => typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -105,11 +106,13 @@ export function RgHero({ slides, labels }: { slides: Slide[]; labels: Record<str
     onTouchStart={e => { touch.current = e.touches[0].clientX; }} onTouchEnd={e => { const dx = e.changedTouches[0].clientX - touch.current; if (Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1)); }}>
     <div className="rg-hero-media" aria-hidden="true">{slides.map((x, k) => <img key={k} src={x.img} alt="" className={k === i ? 'on' : ''} fetchPriority={k === 0 ? 'high' : 'low'} loading={k === 0 ? 'eager' : 'lazy'} />)}</div>
     <p className="rg-hero-side" aria-hidden="true">{labels.side.split(' · ').map(w => <span key={w}>{w}</span>)}</p>
+    <div className="rg-hero-fx">
     <div className="rg-hero-in" key={i} aria-live="polite">
       <p className="rg-hero-eyebrow">{s.eyebrow}</p>
-      {i === 0 ? <h1 className="rg-hero-title">{s.title}</h1> : <h2 className="rg-hero-title">{s.title}</h2>}
+      {i === 0 ? <h1 className="rg-hero-title"><Split text={s.title} /></h1> : <h2 className="rg-hero-title"><Split text={s.title} /></h2>}
       <ul className="rg-hero-meta">{s.meta.map(m => <li key={m}>{m}</li>)}</ul>
       <div className="rg-ctas"><a className="rg-btn rg-btn-accent" href="#request">{labels.cta}<svg className="rg-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a><Link className="rg-btn rg-btn-line" href="/login">{labels.invite}</Link></div>
+    </div>
     </div>
     <div className="rg-hero-bar">
       <div className="rg-hero-count"><span className="rg-hero-prog"><i key={`${i}-${paused}`} style={{ animationDuration: `${DUR}ms`, animationPlayState: paused ? 'paused' : 'running' }} /></span><span>{pad(i + 1)} / {pad(n)}</span></div>

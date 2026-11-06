@@ -1,9 +1,8 @@
 'use client';
 /* Visitor homepage, interactive parts of the private offering:
    - RgMandate: three choices -> how many live properties fit (counts only, from /api/offering/match), then pre-fills the access form.
-   - RgDealMap: closed deals on a map of the Netherlands (city centres only), on the free PDOK base map. */
+   (The closed-deals map lives in dealmap.tsx.) */
 import { useEffect, useRef, useState } from 'react';
-import 'maplibre-gl/dist/maplibre-gl.css';
 
 type Opt = [string, string];
 
@@ -27,7 +26,8 @@ export function RgMandate({ labels, tickets, types, regionLabel }: { labels: Rec
     const msg = form.querySelector<HTMLTextAreaElement>('textarea[name=message]');
     const parts = [region !== 'any' ? (regionLabel[region] || region) : '', ticket !== 'any' ? tickets.find(x => x[0] === ticket)?.[1] : '', type !== 'any' ? types.find(x => x[0] === type)?.[1] : ''].filter(Boolean);
     if (msg && parts.length && !msg.value) msg.value = `${labels.note}: ${parts.join(' · ')}`;
-    document.getElementById('request')?.scrollIntoView({ behavior: 'smooth' });
+    const req = document.getElementById('request'); const lenis = (window as any).__lenis;
+    if (req) lenis ? lenis.scrollTo(req, { duration: 1.5 }) : req.scrollIntoView({ behavior: 'smooth' });
     setTimeout(() => form.querySelector<HTMLInputElement>('input[name=name]')?.focus({ preventScroll: true }), 700);
   };
 
@@ -46,53 +46,5 @@ export function RgMandate({ labels, tickets, types, regionLabel }: { labels: Rec
       <p>{res ? (n === 1 ? labels.one : n ? labels.many : labels.none) : labels.loading}</p>
       <button type="button" className="rg-btn rg-btn-accent" onClick={apply}>{n ? labels.cta : labels.ctaNone}<svg className="rg-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
     </div>
-  </div>;
-}
-
-const PDOK = 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png';
-type Deal = { city: string; type: string; units: number; band: string; dealLabel: string; days: number; lat?: number; lng?: number };
-
-export function RgDealMap({ deals, labels }: { deals: Deal[]; labels: Record<string, string> }) {
-  const box = useRef<HTMLDivElement>(null); const pins = useRef(new Map<string, HTMLElement>());
-  const pts = deals.filter(d => d.lat != null && d.lng != null);
-  const cities = Array.from(pts.reduce((m, d) => m.set(d.city, [...(m.get(d.city) || []), d]), new Map<string, Deal[]>())).map(([city, ds]) => ({ city, n: ds.length, units: ds.reduce((a, d) => a + d.units, 0), days: Math.round(ds.reduce((a, d) => a + d.days, 0) / ds.length) })).sort((a, b) => b.units - a.units);
-  const glow = (city: string, on: boolean) => pins.current.get(city)?.classList.toggle('on', on);
-  const key = pts.map(d => d.city + d.units).join('|');
-  useEffect(() => {
-    let map: any; let cancelled = false; const markers: any[] = [];
-    (async () => {
-      const maplibregl = (await import('maplibre-gl')).default; if (cancelled || !box.current) return;
-      map = new maplibregl.Map({
-        container: box.current, attributionControl: { compact: true }, cooperativeGestures: true, interactive: true,
-        style: { version: 8, sources: { pdok: { type: 'raster', tiles: [PDOK], tileSize: 256, maxzoom: 19, attribution: 'Kaart © <a href="https://www.kadaster.nl" target="_blank" rel="noopener">Kadaster</a> · PDOK' } }, layers: [{ id: 'pdok', type: 'raster', source: 'pdok' }] },
-        bounds: [[3.3, 50.72], [7.25, 53.56]], fitBoundsOptions: { padding: 24 }, maxBounds: [[-6, 46], [17, 58]],
-      });
-      const fit = () => map.fitBounds([[3.3, 50.72], [7.25, 53.56]], { padding: 24, duration: 0 }); map.on('resize', fit); map.once('load', fit);
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-      // Several deals in one city share one marker; size grows with the number of units
-      const byCity = new Map<string, Deal[]>(); pts.forEach(d => byCity.set(d.city, [...(byCity.get(d.city) || []), d]));
-      let i = 0;
-      byCity.forEach((ds, city) => {
-        const units = ds.reduce((a, d) => a + d.units, 0);
-        const wrap = document.createElement('div'); wrap.className = 'rg-dm-m'; pins.current.set(city, wrap);
-        const m = document.createElement('button'); m.type = 'button'; m.className = 'rg-dm-pin'; wrap.append(m); m.style.setProperty('--s', String(Math.min(1.9, 0.9 + units / 40))); m.style.setProperty('--i', String(i++));
-        m.setAttribute('aria-label', `${city}: ${ds.length} ${ds.length === 1 ? labels.deal : labels.deals}`);
-        const tip = document.createElement('span'); tip.className = 'rg-dm-tip';
-        const h = document.createElement('b'); h.textContent = city; tip.append(h);
-        ds.forEach(d => { const r = document.createElement('span'); r.textContent = `${d.type} · ${d.units} ${d.units === 1 ? labels.unit : labels.units} · ${d.band} · ${d.days} ${labels.days}`; tip.append(r); });
-        m.append(tip);
-        markers.push(new maplibregl.Marker({ element: wrap, anchor: 'center' }).setLngLat([ds[0].lng!, ds[0].lat!]).addTo(map));
-      });
-    })();
-    return () => { cancelled = true; markers.forEach(m => m.remove()); map?.remove(); };
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <div className="rg-dealmap">
-    <div className="rg-dealmap-map"><div ref={box} className="rg-dealmap-canvas" role="img" aria-label={labels.aria} /><p className="rg-dealmap-note">{labels.note}</p></div>
-    <aside className="rg-dealmap-side">
-      <p className="rg-eyebrow">{labels.where}</p>
-      <div className="rg-dealmap-sum"><div><b>{cities.length}</b><span>{labels.cities}</span></div><div><b>{cities.reduce((a, c) => a + c.units, 0)}</b><span>{labels.units}</span></div></div>
-      <ul>{cities.map(c => <li key={c.city} tabIndex={0} onMouseEnter={() => glow(c.city, true)} onMouseLeave={() => glow(c.city, false)} onFocus={() => glow(c.city, true)} onBlur={() => glow(c.city, false)}>
-        <span className="rg-dm-city">{c.city}</span><span>{c.n} {c.n === 1 ? labels.deal : labels.deals} · {c.units} {c.units === 1 ? labels.unit : labels.units}</span><span className="rg-dm-days">{c.days} {labels.days}</span></li>)}</ul>
-    </aside>
   </div>;
 }

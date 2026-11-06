@@ -7,6 +7,7 @@ import { Cormorant_Garamond, Jost } from 'next/font/google';
 import { LangToggle, ThemeToggle } from '@/components/client';
 import { tr } from '@/lib/i18n';
 import { RgNav, RgMotion } from './register-client';
+import { RgCinema } from './cinema';
 
 const display = Cormorant_Garamond({ subsets: ['latin'], weight: ['300', '400', '500'], variable: '--rg-display', display: 'swap' });
 const sans = Jost({ subsets: ['latin'], weight: ['300', '400', '500'], variable: '--rg-sans', display: 'swap' });
@@ -20,9 +21,16 @@ export function RegisterShell({ lang, demo, home = false, current, children }: {
   const t = tr(lang); const base = home ? '' : '/';
   const index: [string, string][] = [['approach', t('What we do')], ['access', t('How access works')], ['platform', t('Platform')], ['record', t('Track record')]];
   // Before first paint: mark that motion is allowed, so reveal targets start hidden without a flash.
-  const boot = `(function(){if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('rg-motion')})();`;
+  // Before first paint: allow motion, and on the first homepage visit of a session, show the intro curtain (no flash of the page underneath).
+  const boot = `(function(){var h=document.documentElement;if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;h.classList.add('rg-motion');${home ? "try{if(!sessionStorage.getItem('rgCine')){h.classList.add('rg-intro-on');sessionStorage.setItem('rgCine','1');setTimeout(function(){h.classList.remove('rg-intro-on')},6000)}}catch(e){}" : ''}})();`;
+  const brand = 'MAASLAND & PARTNERS';
   return <div className={`reg ${display.variable} ${sans.variable}${home ? ' reg-home' : ''}`}>
     <script dangerouslySetInnerHTML={{ __html: boot }} />
+    {home && <div className="rg-intro" aria-hidden="true"><div className="rg-intro-in">
+      <p className="rg-intro-name">{brand.split('').map((ch, i) => <span key={i} className="rg-intro-mask"><span className={`rg-intro-ch${ch === '&' ? ' amp' : ''}`}>{ch === ' ' ? ' ' : ch}</span></span>)}</p>
+      <span className="rg-intro-line" />
+      <p className="rg-intro-meta">{t('Private offering · By invitation')}</p>
+    </div></div>}
     <RgNav index={index} base={base} current={current} demo={demo} over={home} mark={<Mark />} labels={{ menu: t('Menu'), close: t('Close'), login: t('Log in'), request: t('Request access'), nav: t('Main navigation'), demo: t('DEMO · INVITE-ONLY · fictional listings and people'), demoLink: `${t('Demo accounts on the')} ${t('login page')}` }} lang={<><LangToggle lang={lang} signedIn={false} /><ThemeToggle /></>} />
     {children}
     <footer className="rg-foot">
@@ -36,5 +44,6 @@ export function RegisterShell({ lang, demo, home = false, current, children }: {
       {demo && <p className="rg-foot-demo">{t('Demo build. All listings, investors and figures are fictional; photographs are reference imagery. KYC, payments, e-signing and emails are simulated adapters. Listings arrive from the company CRM through the integration API.')}</p>}
     </footer>
     <RgMotion />
+    <RgCinema home={home} />
   </div>;
 }

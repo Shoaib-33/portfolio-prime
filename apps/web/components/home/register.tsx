@@ -7,8 +7,10 @@ import { tr } from '@/lib/i18n';
 import { DEAL } from '@/lib/format';
 import { RgCount, RgRecord, RgHero } from './register-client';
 import { RegisterShell, Arrow } from './shell';
-import { RgMandate, RgDealMap } from './offering';
+import { RgMandate } from './offering';
+import { RgDealMap } from './dealmap';
 import { RegisterFaq } from './faq';
+import { Split } from './split';
 
 const PILLARS: [string, string, string][] = [['Acquire', 'Our acquisition team buys residential portfolios, apartment buildings and mixed-use assets directly from owners, funds and developers.', '/img/p1.jpg'], ['Curate', 'Each investor receives a selection that fits their mandate: region, size, yield and risk. Nothing is published on the open market.', '/img/r2.jpg'], ['Close||deal', 'NDA, data room, offers or a structured bid process, through to the notary. One account manager from first look to transfer.', '/img/p2.jpg']];
 const STEPS: [string, string][] = [['Request access', 'Tell us what you invest in. Takes one minute.'], ['Introduction', 'A partner calls to understand your mandate; KYC follows for transactions.'], ['Your invitation', 'A personal link with the properties selected for you and the tools you need.'], ['Review and bid', 'Underwrite, open the data room, make an offer or join a structured sale.']];
@@ -47,7 +49,7 @@ export async function RegisterHome({ stats, sold, teasers, cfg, lang, demo }: { 
         <ul className="rg-show-stats rg-show-l" aria-label={t('Track record in numbers')}>{figures.slice(0, 2).map(([v, l]) => <li key={l} data-rv><b><RgCount value={v} /></b><span>{t(l)}</span></li>)}</ul>
         <div className="rg-show-c">
           <p className="rg-eyebrow" data-rv>{t('Inside the platform')}</p>
-          <h2 id="rg-show-t" data-rv><span>{t('Every number.')}</span> <em>{t('One private room.')}</em></h2>
+          <h2 id="rg-show-t" data-split><span><Split text={t('Every number.')} /></span> <em><Split text={t('One private room.')} /></em></h2>
           <p className="rg-show-lead" data-rv>{t('Rent roll, valuation, data room and bidding for each property in your personal selection, from first look to the notary.')}</p>
           <div className="rg-show-ctas" data-rv><a className="rg-btn rg-btn-accent" href="#request">{t('Request access')}<Arrow /></a><a className="rg-btn rg-btn-line" href="#access">{t('How access works')}</a></div>
         </div>
@@ -90,7 +92,7 @@ export async function RegisterHome({ stats, sold, teasers, cfg, lang, demo }: { 
 
     {/* ---------- In the offering now: locked teasers (anonymised) and a mandate check ---------- */}
     <section className="rg-sec rg-offer" id="offering" data-sec>
-      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('In the offering now')}</p><h2 data-rv>{t('Private, and available today.')}</h2></div><p className="rg-sub" data-rv>{t('A glimpse of what members see. Names, addresses and figures open once your access is approved.')}</p></header>
+      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('In the offering now')}</p><h2 data-split><Split text={t('Private, and available today.')} /></h2></div><p className="rg-sub" data-rv>{t('A glimpse of what members see. Names, addresses and figures open once your access is approved.')}</p></header>
       <RgMandate labels={{ title: t('Check your mandate'), region: t('Region'), ticket: t('Ticket size'), type: t('Property type'), anyRegion: t('All of the Netherlands'), anyTicket: t('Any size'), anyType: t('Any type'),
         one: t('property in the private offering fits your mandate right now.'), many: t('properties in the private offering fit your mandate right now.'), none: t('No live match today. Tell us your mandate and we will alert you first.'), loading: t('Checking the offering…'),
         cta: t('Request access to these'), ctaNone: t('Share my mandate'), note: t('Mandate') }}
@@ -112,38 +114,40 @@ export async function RegisterHome({ stats, sold, teasers, cfg, lang, demo }: { 
 
     {/* ---------- What we do ---------- */}
     <section className="rg-sec" id="approach" data-sec>
-      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('What we do')}</p><h2 data-rv>{t('Three disciplines, one point of contact.')}</h2></div><p className="rg-sub" data-rv>{t('From acquisition to transfer, every step is handled in-house by one team.')}</p></header>
+      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('What we do')}</p><h2 data-split><Split text={t('Three disciplines, one point of contact.')} /></h2></div><p className="rg-sub" data-rv>{t('From acquisition to transfer, every step is handled in-house by one team.')}</p></header>
       <div className="rg-pillars">{PILLARS.map(([h, p, img], i) => <article key={h} className="rg-card rg-pillar" data-rv>
-        <div className="rg-media"><img src={img} alt="" loading="lazy" /></div>
+        <div className="rg-media" data-reveal><img src={img} alt="" loading="lazy" /></div>
         <div className="rg-card-body"><span className="rg-num">0{i + 1}</span><h3>{t(h)}</h3><p>{t(p)}</p></div>
       </article>)}</div>
     </section>
 
     {/* ---------- How access works ---------- */}
     <section className="rg-sec rg-dark" id="access" data-sec>
-      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('How access works')}</p><h2 data-rv>{t('From introduction to your own selection.')}</h2></div><a className="rg-btn rg-btn-accent" href="#request" data-rv>{t('Request access')}<Arrow /></a></header>
-      <ol className="rg-steps" data-rv>{STEPS.map(([h, p], i) => <li key={h} style={{ ['--i' as any]: i }}><span className="rg-step-dot">{i + 1}</span><p className="rg-step-k">{t('Step {n}', { n: i + 1 })}</p><h3>{t(h)}</h3><p>{t(p)}</p></li>)}</ol>
+      <div className="rg-pin">
+      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('How access works')}</p><h2 data-split><Split text={t('From introduction to your own selection.')} /></h2></div><a className="rg-btn rg-btn-accent" href="#request" data-rv>{t('Request access')}<Arrow /></a></header>
+      <ol className="rg-steps" data-steps>{STEPS.map(([h, p], i) => <li key={h} style={{ ['--i' as any]: i }}><span className="rg-step-dot">{i + 1}</span><p className="rg-step-k">{t('Step {n}', { n: i + 1 })}</p><h3>{t(h)}</h3><p>{t(p)}</p></li>)}</ol>
+      </div>
     </section>
 
     {/* ---------- Platform ---------- */}
     <section className="rg-sec" id="platform" data-sec>
-      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('INSIDE THE PLATFORM')}</p><h2 data-rv>{t('Tools for serious capital.')}</h2></div><p className="rg-sub" data-rv>{t('Switched on per investor, so every member sees what they need.')}</p></header>
+      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('INSIDE THE PLATFORM')}</p><h2 data-split><Split text={t('Tools for serious capital.')} /></h2></div><p className="rg-sub" data-rv>{t('Switched on per investor, so every member sees what they need.')}</p></header>
       <ul className="rg-tools">{TOOLS.map(([h, p], i) => <li key={h} className="rg-card rg-tool" data-rv><span className="rg-ico"><svg viewBox="0 0 24 24" aria-hidden="true">{ICONS[i]}</svg></span><h3>{t(h)}</h3><p>{t(p)}</p></li>)}</ul>
     </section>
 
     {/* ---------- Track record ---------- */}
     <section className="rg-sec rg-tint" id="record" data-sec>
-      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('TRACK RECORD')}</p><h2 data-rv>{t('Recently closed.')}</h2></div><p className="rg-sub" data-rv>{t('Anonymised: city, type and price band only.')}</p></header>
-      <RgDealMap deals={deals} labels={{ aria: t('Map of recently closed deals in the Netherlands'), note: t('City level only. Hover a point for the deals in that city.'), deal: t('deal'), deals: t('deals'), unit: t('unit'), units: t('units'), where: t('Where we closed'), cities: t('cities'), days: t('days to offer') }} />
+      <header className="rg-head rg-head-split"><div><p className="rg-eyebrow" data-rv>{t('TRACK RECORD')}</p><h2 data-split><Split text={t('Recently closed.')} /></h2></div><p className="rg-sub" data-rv>{t('Anonymised: city, type and price band only.')}</p></header>
+      <RgDealMap deals={deals} labels={{ aria: t('Map of recently closed deals in the Netherlands'), note: t('City level only. Column height shows the units sold; hover a column or a city for the deals.'), deal: t('deal'), deals: t('deals'), unit: t('unit'), units: t('units'), where: t('Where we closed'), cities: t('cities'), days: t('days to offer') }} />
       <RgRecord deals={deals} types={dealTypes} labels={{ all: t('All'), units: t('units'), city: t('City'), type: t('Type'), unitsH: t('Units'), band: t('Price band'), deal: t('Deal'), days: t('Days to offer'), filter: t('Filter by deal type'), daysShort: t('days to offer') }} />
     </section>
 
     {/* ---------- Sellers ---------- */}
     <section className="rg-sell" aria-labelledby="rg-sell-t">
-      <div className="rg-sell-media" aria-hidden="true"><img src="/img/r1.jpg" alt="" loading="lazy" /></div>
+      <div className="rg-sell-media" aria-hidden="true" data-reveal><img src="/img/r1.jpg" alt="" loading="lazy" /></div>
       <div className="rg-sell-body" data-rv>
         <p className="rg-eyebrow">{t('OWNERS AND FUNDS')}</p>
-        <h2 id="rg-sell-t">{t('Selling a portfolio?')}</h2>
+        <h2 id="rg-sell-t" data-split><Split text={t('Selling a portfolio?')} /></h2>
         <p>{t('We buy directly: a firm offer, certainty of funding and full discretion. Your asset is never advertised.')}</p>
         <ul className="rg-checks">{['Firm offer, own funding', 'Never advertised', 'One partner from first call to notary'].map(x => <li key={x}>{t(x)}</li>)}</ul>
         <a className="rg-btn rg-btn-accent" href="#request">{t('Talk to our acquisition team')}<Arrow /></a>
@@ -154,7 +158,7 @@ export async function RegisterHome({ stats, sold, teasers, cfg, lang, demo }: { 
 
     {/* ---------- Request access ---------- */}
     <section className="rg-sec rg-request" id="request" data-sec>
-      <div className="rg-req-copy"><p className="rg-eyebrow" data-rv>{t('REQUEST ACCESS')}</p><h2 data-rv>{t('Start with a conversation.')}</h2><p className="rg-sub" data-rv>{t('Tell us briefly what you invest in or want to sell. A partner replies within one working day. Access is personal; we never share your details.')}</p>
+      <div className="rg-req-copy"><p className="rg-eyebrow" data-rv>{t('REQUEST ACCESS')}</p><h2 data-split><Split text={t('Start with a conversation.')} /></h2><p className="rg-sub" data-rv>{t('Tell us briefly what you invest in or want to sell. A partner replies within one working day. Access is personal; we never share your details.')}</p>
         <ul className="rg-checks" data-rv>{['No cost, no obligation', 'Tickets from €1m to €250m+', 'English, Dutch and German'].map(x => <li key={x}>{t(x)}</li>)}</ul></div>
       <div className="rg-form" data-rv><RequestAccessForm /></div>
     </section>

@@ -457,6 +457,7 @@ const NL: Record<string, string> = {
   'Yes. Login uses two-factor authentication, data-room documents are watermarked with your name, and we never share your details. Your data is stored in the EU.': 'Ja. Inloggen gebeurt met tweestapsverificatie, documenten in de dataroom krijgen uw naam als watermerk en wij delen uw gegevens nooit. Uw gegevens worden opgeslagen in de EU.',
   'I want to sell a property or portfolio. How does that work?': 'Ik wil een object of portefeuille verkopen. Hoe werkt dat?',
   'We buy directly: a firm offer, certainty of funding and full discretion. Your asset is never advertised. Request access and choose “Sell a property”, and our acquisition team contacts you.': 'Wij kopen rechtstreeks: een vast bod, zekerheid van financiering en volledige discretie. Uw object wordt nooit openbaar aangeboden. Vraag toegang aan en kies “Vastgoed verkopen”; ons acquisitieteam neemt contact met u op.',
+  'City level only. Column height shows the units sold; hover a column or a city for the deals.': 'Alleen op stadsniveau. De hoogte van een kolom toont het aantal verkochte eenheden; beweeg over een kolom of stad voor de transacties.',
   'PLACED WITH OUR INVESTORS': 'GEPLAATST BIJ ONZE BELEGGERS', 'Buildings, not brochures.': 'Gebouwen, geen brochures.', 'Full track record': 'Volledig trackrecord',
   '{type} in {city}': '{type} in {city}', 'units': 'eenheden',
 };
